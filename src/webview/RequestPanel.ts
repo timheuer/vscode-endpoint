@@ -179,6 +179,54 @@ export class RequestPanel {
             case 'openInEditor':
                 this._openResponseInEditor();
                 break;
+            case 'getAvailableVariables':
+                this._getAvailableVariables();
+                break;
+        }
+    }
+
+    private async _getAvailableVariables(): Promise<void> {
+        // Built-in variable names
+        const builtinVariables = [
+            '$timestamp',
+            '$guid',
+            '$uuid',
+            '$date',
+            '$time',
+            '$randomint',
+            '$datetime',
+            '$timestamp_unix'
+        ];
+
+        // Convert to flat array format: { name: string, source: string }[]
+        const variables: { name: string; source: string }[] = builtinVariables.map(name => ({
+            name,
+            source: 'Built-in'
+        }));
+
+        if (!RequestPanel._variableService) {
+            this._panel.webview.postMessage({ type: 'variablesList', data: variables });
+            return;
+        }
+
+        try {
+            // Get variables preview from VariableService
+            const preview = await RequestPanel._variableService.getVariablesPreview(this._collectionId);
+
+            // Add environment variables
+            for (const name of Object.keys(preview.environment)) {
+                variables.push({ name, source: 'Environment' });
+            }
+
+            // Add collection variables
+            for (const name of Object.keys(preview.collection)) {
+                variables.push({ name, source: 'Collection' });
+            }
+
+            this._panel.webview.postMessage({ type: 'variablesList', data: variables });
+        } catch (error) {
+            // Return just built-ins on error
+            this._panel.webview.postMessage({ type: 'variablesList', data: variables });
         }
     }
 

@@ -3,6 +3,7 @@
   "displayName": "Endpoint",
   "description": "REST Client with UI",
   "version": "0.0.0-placeholder",
+  "preview": true,
   "author": {
     "name": "Tim Heuer",
     "url": "https://github.com/timheuer"
