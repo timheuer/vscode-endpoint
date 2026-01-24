@@ -1,0 +1,467 @@
+{
+  "name": "vscode-endpoint",
+  "displayName": "Endpoint",
+  "description": "REST Client with UI",
+  "version": "0.0.0-placeholder",
+  "author": {
+    "name": "Tim Heuer",
+    "url": "https://github.com/timheuer"
+  },
+  "publisher": "timheuer",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timheuer/vscode-endpoint"
+  },
+  "bugs": {
+    "url": "https://github.com/timheuer/vscode-endpoint/issues"
+  },
+  "qna": "https://github.com/timheuer/vscode-endpoint/issues",
+  "engines": {
+    "vscode": "^1.108.1"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [ ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "endpoint",
+          "title": "Endpoint",
+          "icon": "icon.png"
+        }
+      ]
+    },
+    "views": {
+      "endpoint": [
+        {
+          "id": "endpointCollections",
+          "name": "Collections",
+          "icon": "$(folder-library)"
+        },
+        {
+          "id": "endpointEnvironments",
+          "name": "Environments",
+          "icon": "$(symbol-namespace)"
+        },
+        {
+          "id": "endpointHistory",
+          "name": "History",
+          "icon": "$(history)"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "endpoint.refreshCollections",
+        "title": "Refresh Collections",
+        "icon": "$(refresh)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.addCollection",
+        "title": "Add Collection",
+        "icon": "$(add)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.editCollection",
+        "title": "Edit Collection",
+        "icon": "$(edit)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.deleteCollection",
+        "title": "Delete Collection",
+        "icon": "$(trash)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.duplicateCollection",
+        "title": "Duplicate Collection",
+        "icon": "$(copy)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.collectionSettings",
+        "title": "Collection Settings",
+        "icon": "$(gear)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.addRequest",
+        "title": "Add Request",
+        "icon": "$(add)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.editRequest",
+        "title": "Edit Request",
+        "icon": "$(edit)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.deleteRequest",
+        "title": "Delete Request",
+        "icon": "$(trash)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.duplicateRequest",
+        "title": "Duplicate Request",
+        "icon": "$(copy)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.openRequest",
+        "title": "Open Request",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.refreshEnvironments",
+        "title": "Refresh Environments",
+        "icon": "$(refresh)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.addEnvironment",
+        "title": "Add Environment",
+        "icon": "$(add)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.editEnvironment",
+        "title": "Edit Environment",
+        "icon": "$(edit)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.deleteEnvironment",
+        "title": "Delete Environment",
+        "icon": "$(trash)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.duplicateEnvironment",
+        "title": "Duplicate Environment",
+        "icon": "$(copy)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.setActiveEnvironment",
+        "title": "Set as Active",
+        "icon": "$(check)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.addVariable",
+        "title": "Add Variable",
+        "icon": "$(add)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.editVariable",
+        "title": "Edit Variable",
+        "icon": "$(edit)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.deleteVariable",
+        "title": "Delete Variable",
+        "icon": "$(trash)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.toggleVariable",
+        "title": "Toggle Variable",
+        "icon": "$(circle-slash)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.refreshHistory",
+        "title": "Refresh History",
+        "icon": "$(refresh)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.clearHistory",
+        "title": "Clear History",
+        "icon": "$(clear-all)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.deleteHistoryItem",
+        "title": "Delete History Item",
+        "icon": "$(trash)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.openHistoryItem",
+        "title": "Open History Item",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.saveHistoryToCollection",
+        "title": "Save to Collection",
+        "icon": "$(save)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.newRequest",
+        "title": "New Request",
+        "icon": "$(add)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.import",
+        "title": "Import HTTP File",
+        "icon": "$(cloud-download)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.export",
+        "title": "Export All Collections",
+        "icon": "$(cloud-upload)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.exportCollection",
+        "title": "Export Collection",
+        "icon": "$(export)",
+        "category": "Endpoint"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "endpoint.addCollection",
+          "when": "view == endpointCollections",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.import",
+          "when": "view == endpointCollections",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.export",
+          "when": "view == endpointCollections",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.refreshCollections",
+          "when": "view == endpointCollections",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.addEnvironment",
+          "when": "view == endpointEnvironments",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.refreshEnvironments",
+          "when": "view == endpointEnvironments",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.clearHistory",
+          "when": "view == endpointHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "endpoint.refreshHistory",
+          "when": "view == endpointHistory",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "endpoint.addRequest",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "inline@1"
+        },
+        {
+          "command": "endpoint.editCollection",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "inline@2"
+        },
+        {
+          "command": "endpoint.collectionSettings",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "inline@3"
+        },
+        {
+          "command": "endpoint.addRequest",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "1_crud@1"
+        },
+        {
+          "command": "endpoint.editCollection",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "1_crud@2"
+        },
+        {
+          "command": "endpoint.duplicateCollection",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "1_crud@3"
+        },
+        {
+          "command": "endpoint.exportCollection",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "1_crud@4"
+        },
+        {
+          "command": "endpoint.collectionSettings",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "1_crud@5"
+        },
+        {
+          "command": "endpoint.deleteCollection",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "2_delete"
+        },
+        {
+          "command": "endpoint.editRequest",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "1_crud@1"
+        },
+        {
+          "command": "endpoint.duplicateRequest",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "1_crud@2"
+        },
+        {
+          "command": "endpoint.deleteRequest",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "2_delete"
+        },
+        {
+          "command": "endpoint.setActiveEnvironment",
+          "when": "view == endpointEnvironments && viewItem == environment",
+          "group": "0_active"
+        },
+        {
+          "command": "endpoint.addVariable",
+          "when": "view == endpointEnvironments && viewItem =~ /^environment/",
+          "group": "inline@1"
+        },
+        {
+          "command": "endpoint.addVariable",
+          "when": "view == endpointEnvironments && viewItem =~ /^environment/",
+          "group": "1_crud@1"
+        },
+        {
+          "command": "endpoint.editEnvironment",
+          "when": "view == endpointEnvironments && viewItem =~ /^environment/",
+          "group": "1_crud@2"
+        },
+        {
+          "command": "endpoint.duplicateEnvironment",
+          "when": "view == endpointEnvironments && viewItem =~ /^environment/",
+          "group": "1_crud@3"
+        },
+        {
+          "command": "endpoint.deleteEnvironment",
+          "when": "view == endpointEnvironments && viewItem =~ /^environment/",
+          "group": "2_delete"
+        },
+        {
+          "command": "endpoint.editVariable",
+          "when": "view == endpointEnvironments && viewItem == variable",
+          "group": "1_crud@1"
+        },
+        {
+          "command": "endpoint.toggleVariable",
+          "when": "view == endpointEnvironments && viewItem == variable",
+          "group": "1_crud@2"
+        },
+        {
+          "command": "endpoint.deleteVariable",
+          "when": "view == endpointEnvironments && viewItem == variable",
+          "group": "2_delete"
+        },
+        {
+          "command": "endpoint.saveHistoryToCollection",
+          "when": "view == endpointHistory && viewItem == historyItem",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "endpoint.deleteHistoryItem",
+          "when": "view == endpointHistory && viewItem == historyItem",
+          "group": "2_delete"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "endpoint.newRequest",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r"
+      },
+      {
+        "command": "endpoint.import",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+shift+i"
+      },
+      {
+        "command": "endpoint.export",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e"
+      }
+    ],
+    "configuration": {
+      "title": "Endpoint",
+      "properties": {
+        "endpoint.logLevel": {
+          "type": "string",
+          "default": "info",
+          "enum": [ "off", "error", "warn", "info", "debug", "trace" ],
+          "enumDescriptions": [
+            "No logging",
+            "Only errors",
+            "Errors and warnings",
+            "Errors, warnings, and info",
+            "All except trace",
+            "All log levels"
+          ],
+          "description": "Controls the logging level for the Endpoint extension"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "deploy": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.108.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.52.0"
+  },
+  "dependencies": {
+    "@timheuer/vscode-ext-logger": "^0.1.35",
+    "@vscode-elements/elements": "^1.2.0",
+    "@vscode/codicons": "^0.0.36"
+  }
+}
