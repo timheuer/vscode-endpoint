@@ -23,6 +23,7 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 6. **Collection Defaults**: Collections support `defaultHeaders` and `defaultAuth` that merge with request-specific values (request overrides collection)
 7. **Request Chaining**: Use `ResponseStorage` singleton for session-scoped response storage. Supports `{{requestName.response.body.path}}` syntax via `VariableResolver`
 8. **Logging**: Use `@timheuer/vscode-ext-logger` via `src/logger.ts`. Import `getLogger()` to access the logger. Log level controlled via `endpoint.logLevel` setting with automatic config monitoring.
+9. **Environment Variable Security**: Environment variable VALUES are stored in VS Code's SecretStorage (encrypted), while metadata (names, enabled flags) is stored in globalState. Methods `getEnvironments()`, `getEnvironment()`, `getActiveEnvironment()` are async. Variable values are masked in the tree view UI.
 
 ### Commands
 Commands are prefixed with `endpoint.` and registered in `extension.ts`.

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Collection } from '../models/Collection';
-import { Environment } from '../models/Environment';
+import { Environment, EnvironmentVariable } from '../models/Environment';
 import { HistoryItem } from '../models/HistoryItem';
 
 const STORAGE_KEYS = {
@@ -9,6 +9,28 @@ const STORAGE_KEYS = {
     ACTIVE_ENVIRONMENT: 'endpoint.activeEnvironmentId',
     HISTORY: 'endpoint.history',
 } as const;
+
+/**
+ * Stored environment variable without the sensitive value field.
+ * Values are stored separately in SecretStorage.
+ */
+interface StoredEnvironmentVariable {
+    name: string;
+    enabled: boolean;
+}
+
+/**
+ * Environment metadata stored in globalState.
+ * Variable values are stored separately in SecretStorage.
+ */
+interface StoredEnvironment {
+    id: string;
+    name: string;
+    variables: StoredEnvironmentVariable[]; // no value field
+    isActive: boolean;
+    createdAt: number;
+    updatedAt: number;
+}
 
 /**
  * Centralized storage service using VS Code's ExtensionContext for persistence.
@@ -74,50 +96,172 @@ export class StorageService {
     // ==================== Environments ====================
 
     /**
-     * Get all environments from storage
+     * Get the secret storage key for a variable value
      */
-    getEnvironments(): Environment[] {
-        return this.context.globalState.get<Environment[]>(STORAGE_KEYS.ENVIRONMENTS, []);
+    private getSecretKeyForVariable(envId: string, varName: string): string {
+        return `endpoint.env.${envId}.var.${varName}`;
     }
 
     /**
-     * Save all environments to storage
+     * Get all secret keys for an environment based on its stored variables
      */
-    async saveEnvironments(environments: Environment[]): Promise<void> {
+    private getAllSecretKeysForEnvironment(storedEnv: StoredEnvironment): string[] {
+        return storedEnv.variables.map(v => this.getSecretKeyForVariable(storedEnv.id, v.name));
+    }
+
+    /**
+     * Get stored environments metadata from globalState (without values)
+     */
+    private getStoredEnvironments(): StoredEnvironment[] {
+        return this.context.globalState.get<StoredEnvironment[]>(STORAGE_KEYS.ENVIRONMENTS, []);
+    }
+
+    /**
+     * Save stored environments metadata to globalState
+     */
+    private async saveStoredEnvironments(environments: StoredEnvironment[]): Promise<void> {
         await this.context.globalState.update(STORAGE_KEYS.ENVIRONMENTS, environments);
     }
 
     /**
-     * Get a single environment by ID
+     * Hydrate a stored environment with values from SecretStorage
      */
-    getEnvironment(id: string): Environment | undefined {
-        const environments = this.getEnvironments();
-        return environments.find(e => e.id === id);
+    private async hydrateEnvironment(stored: StoredEnvironment): Promise<Environment> {
+        const variables: EnvironmentVariable[] = await Promise.all(
+            stored.variables.map(async (v) => {
+                const secretKey = this.getSecretKeyForVariable(stored.id, v.name);
+                const value = await this.context.secrets.get(secretKey) ?? '';
+                return {
+                    name: v.name,
+                    value,
+                    enabled: v.enabled,
+                };
+            })
+        );
+
+        return {
+            id: stored.id,
+            name: stored.name,
+            variables,
+            isActive: stored.isActive,
+            createdAt: stored.createdAt,
+            updatedAt: stored.updatedAt,
+        };
+    }
+
+    /**
+     * Get all environments from storage (hydrated with values from secrets)
+     */
+    async getEnvironments(): Promise<Environment[]> {
+        const storedEnvironments = this.getStoredEnvironments();
+        return Promise.all(storedEnvironments.map(stored => this.hydrateEnvironment(stored)));
+    }
+
+    /**
+     * Save all environments to storage
+     * Note: This replaces all environments. For single updates, use saveEnvironment().
+     */
+    async saveEnvironments(environments: Environment[]): Promise<void> {
+        // First, get current stored environments to know which secrets to clean up
+        const currentStored = this.getStoredEnvironments();
+
+        // Delete all existing secrets for all environments
+        for (const stored of currentStored) {
+            const secretKeys = this.getAllSecretKeysForEnvironment(stored);
+            await Promise.all(secretKeys.map(key => this.context.secrets.delete(key)));
+        }
+
+        // Convert environments to stored format and save values to secrets
+        const storedEnvironments: StoredEnvironment[] = [];
+        for (const env of environments) {
+            // Store variable values in secrets
+            await Promise.all(
+                env.variables.map(v =>
+                    this.context.secrets.store(this.getSecretKeyForVariable(env.id, v.name), v.value)
+                )
+            );
+
+            // Create stored environment without values
+            storedEnvironments.push({
+                id: env.id,
+                name: env.name,
+                variables: env.variables.map(v => ({ name: v.name, enabled: v.enabled })),
+                isActive: env.isActive,
+                createdAt: env.createdAt,
+                updatedAt: env.updatedAt,
+            });
+        }
+
+        await this.saveStoredEnvironments(storedEnvironments);
+    }
+
+    /**
+     * Get a single environment by ID (hydrated with values from secrets)
+     */
+    async getEnvironment(id: string): Promise<Environment | undefined> {
+        const storedEnvironments = this.getStoredEnvironments();
+        const stored = storedEnvironments.find(e => e.id === id);
+        if (!stored) {
+            return undefined;
+        }
+        return this.hydrateEnvironment(stored);
     }
 
     /**
      * Save or update a single environment
      */
     async saveEnvironment(environment: Environment): Promise<void> {
-        const environments = this.getEnvironments();
-        const index = environments.findIndex(e => e.id === environment.id);
+        const storedEnvironments = this.getStoredEnvironments();
+        const index = storedEnvironments.findIndex(e => e.id === environment.id);
 
+        // If updating, clean up old secrets first
         if (index !== -1) {
-            environments[index] = environment;
-        } else {
-            environments.push(environment);
+            const oldStored = storedEnvironments[index];
+            const oldSecretKeys = this.getAllSecretKeysForEnvironment(oldStored);
+            await Promise.all(oldSecretKeys.map(key => this.context.secrets.delete(key)));
         }
 
-        await this.saveEnvironments(environments);
+        // Store variable values in secrets
+        await Promise.all(
+            environment.variables.map(v =>
+                this.context.secrets.store(this.getSecretKeyForVariable(environment.id, v.name), v.value)
+            )
+        );
+
+        // Create stored environment without values
+        const storedEnv: StoredEnvironment = {
+            id: environment.id,
+            name: environment.name,
+            variables: environment.variables.map(v => ({ name: v.name, enabled: v.enabled })),
+            isActive: environment.isActive,
+            createdAt: environment.createdAt,
+            updatedAt: environment.updatedAt,
+        };
+
+        if (index !== -1) {
+            storedEnvironments[index] = storedEnv;
+        } else {
+            storedEnvironments.push(storedEnv);
+        }
+
+        await this.saveStoredEnvironments(storedEnvironments);
     }
 
     /**
-     * Delete an environment by ID
+     * Delete an environment by ID (also deletes associated secrets)
      */
     async deleteEnvironment(id: string): Promise<void> {
-        const environments = this.getEnvironments();
-        const filtered = environments.filter(e => e.id !== id);
-        await this.saveEnvironments(filtered);
+        const storedEnvironments = this.getStoredEnvironments();
+        const stored = storedEnvironments.find(e => e.id === id);
+
+        // Delete all secrets for this environment
+        if (stored) {
+            const secretKeys = this.getAllSecretKeysForEnvironment(stored);
+            await Promise.all(secretKeys.map(key => this.context.secrets.delete(key)));
+        }
+
+        const filtered = storedEnvironments.filter(e => e.id !== id);
+        await this.saveStoredEnvironments(filtered);
 
         // Clear active environment if it was deleted
         if (this.getActiveEnvironmentId() === id) {
@@ -140,9 +284,9 @@ export class StorageService {
     }
 
     /**
-     * Get the active environment
+     * Get the active environment (hydrated with values from secrets)
      */
-    getActiveEnvironment(): Environment | undefined {
+    async getActiveEnvironment(): Promise<Environment | undefined> {
         const id = this.getActiveEnvironmentId();
         if (!id) {
             return undefined;

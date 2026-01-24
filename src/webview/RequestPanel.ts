@@ -241,15 +241,15 @@ export class RequestPanel {
 
         // Add auth headers (resolve variables in auth values)
         if (effectiveAuth.type === 'basic' && effectiveAuth.username) {
-            const resolvedUsername = RequestPanel._variableService!.resolveText(effectiveAuth.username, this._collectionId);
-            const resolvedPassword = RequestPanel._variableService!.resolveText(effectiveAuth.password || '', this._collectionId);
+            const resolvedUsername = await RequestPanel._variableService!.resolveText(effectiveAuth.username, this._collectionId);
+            const resolvedPassword = await RequestPanel._variableService!.resolveText(effectiveAuth.password || '', this._collectionId);
             const credentials = Buffer.from(`${resolvedUsername}:${resolvedPassword}`).toString('base64');
             headers['Authorization'] = `Basic ${credentials}`;
         } else if (effectiveAuth.type === 'bearer' && effectiveAuth.token) {
-            const resolvedToken = RequestPanel._variableService!.resolveText(effectiveAuth.token, this._collectionId);
+            const resolvedToken = await RequestPanel._variableService!.resolveText(effectiveAuth.token, this._collectionId);
             headers['Authorization'] = `Bearer ${resolvedToken}`;
         } else if (effectiveAuth.type === 'apikey' && effectiveAuth.apiKeyName) {
-            const resolvedKeyValue = RequestPanel._variableService!.resolveText(effectiveAuth.apiKeyValue || '', this._collectionId);
+            const resolvedKeyValue = await RequestPanel._variableService!.resolveText(effectiveAuth.apiKeyValue || '', this._collectionId);
             if (effectiveAuth.apiKeyIn === 'header') {
                 headers[effectiveAuth.apiKeyName] = resolvedKeyValue;
             } else {
@@ -287,12 +287,14 @@ export class RequestPanel {
 
         // Resolve variables using VariableService
         const variableService = RequestPanel._variableService;
-        const resolvedUrl = variableService.resolveText(url, this._collectionId);
-        const resolvedHeaders: { name: string; value: string }[] = Object.entries(headers).map(([name, value]) => ({
-            name,
-            value: variableService.resolveText(value, this._collectionId),
-        }));
-        const resolvedBody = body ? variableService.resolveText(body, this._collectionId) : undefined;
+        const resolvedUrl = await variableService.resolveText(url, this._collectionId);
+        const resolvedHeaders: { name: string; value: string }[] = await Promise.all(
+            Object.entries(headers).map(async ([name, value]) => ({
+                name,
+                value: await variableService.resolveText(value, this._collectionId),
+            }))
+        );
+        const resolvedBody = body ? await variableService.resolveText(body, this._collectionId) : undefined;
 
         // Build the request object
         const request: Request = {

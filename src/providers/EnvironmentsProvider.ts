@@ -29,8 +29,10 @@ export class VariableItem extends vscode.TreeItem {
         this.iconPath = new vscode.ThemeIcon(
             variable.enabled ? 'symbol-variable' : 'circle-slash'
         );
-        this.tooltip = `${variable.name} = ${variable.value}`;
-        this.description = variable.enabled ? variable.value : `(disabled) ${variable.value}`;
+        // Mask the value for security
+        const maskedValue = '*****';
+        this.tooltip = `${variable.name} = ${maskedValue}`;
+        this.description = variable.enabled ? maskedValue : `(disabled) ${maskedValue}`;
     }
 }
 
@@ -39,10 +41,6 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
     readonly onDidChangeTreeData: vscode.Event<EnvironmentTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     constructor(private storageService: StorageService) { }
-
-    private get environments(): Environment[] {
-        return this.storageService.getEnvironments();
-    }
 
     private getActiveEnvironmentId(): string | undefined {
         return this.storageService.getActiveEnvironmentId();
@@ -56,29 +54,26 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
         return element;
     }
 
-    getChildren(element?: EnvironmentTreeItem): Thenable<EnvironmentTreeItem[]> {
+    async getChildren(element?: EnvironmentTreeItem): Promise<EnvironmentTreeItem[]> {
         if (!element) {
             // Root level: return environments with active status based on stored active ID
             const activeId = this.getActiveEnvironmentId();
-            return Promise.resolve(
-                this.environments.map((e) => {
-                    // Clone environment with correct isActive based on stored ID
-                    const envWithActiveState = { ...e, isActive: e.id === activeId };
-                    return new EnvironmentItem(envWithActiveState, vscode.TreeItemCollapsibleState.Collapsed);
-                })
-            );
+            const environments = await this.storageService.getEnvironments();
+            return environments.map((e) => {
+                // Clone environment with correct isActive based on stored ID
+                const envWithActiveState = { ...e, isActive: e.id === activeId };
+                return new EnvironmentItem(envWithActiveState, vscode.TreeItemCollapsibleState.Collapsed);
+            });
         }
 
         if (element instanceof EnvironmentItem) {
             // Environment level: return variables
-            return Promise.resolve(
-                element.environment.variables.map(
-                    (v) => new VariableItem(v, element.environment.id)
-                )
+            return element.environment.variables.map(
+                (v) => new VariableItem(v, element.environment.id)
             );
         }
 
-        return Promise.resolve([]);
+        return [];
     }
 
     // CRUD Operations for Environments
@@ -116,7 +111,7 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
         });
 
         if (newName) {
-            const environment = this.storageService.getEnvironment(item.environment.id);
+            const environment = await this.storageService.getEnvironment(item.environment.id);
             if (environment) {
                 environment.name = newName.trim();
                 environment.updatedAt = Date.now();
@@ -177,7 +172,7 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
 
         if (value !== undefined) {
             const variable = createVariable(name.trim(), value);
-            const environment = this.storageService.getEnvironment(envItem.environment.id);
+            const environment = await this.storageService.getEnvironment(envItem.environment.id);
             if (environment) {
                 environment.variables.push(variable);
                 environment.updatedAt = Date.now();
@@ -190,7 +185,7 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
     }
 
     async editVariable(item: VariableItem): Promise<void> {
-        const environment = this.storageService.getEnvironment(item.environmentId);
+        const environment = await this.storageService.getEnvironment(item.environmentId);
         if (!environment) {
             return;
         }
@@ -237,7 +232,7 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
         );
 
         if (confirm === 'Delete') {
-            const environment = this.storageService.getEnvironment(item.environmentId);
+            const environment = await this.storageService.getEnvironment(item.environmentId);
             if (environment) {
                 environment.variables = environment.variables.filter(
                     (v) => v.name !== item.variable.name
@@ -250,7 +245,7 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
     }
 
     async toggleVariable(item: VariableItem): Promise<void> {
-        const environment = this.storageService.getEnvironment(item.environmentId);
+        const environment = await this.storageService.getEnvironment(item.environmentId);
         if (environment) {
             const variable = environment.variables.find((v) => v.name === item.variable.name);
             if (variable) {
@@ -262,16 +257,16 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
         }
     }
 
-    getActiveEnvironment(): Environment | undefined {
+    async getActiveEnvironment(): Promise<Environment | undefined> {
         return this.storageService.getActiveEnvironment();
     }
 
-    getEnvironments(): Environment[] {
-        return this.environments;
+    async getEnvironments(): Promise<Environment[]> {
+        return this.storageService.getEnvironments();
     }
 
-    resolveVariable(variableName: string): string | undefined {
-        const activeEnv = this.getActiveEnvironment();
+    async resolveVariable(variableName: string): Promise<string | undefined> {
+        const activeEnv = await this.getActiveEnvironment();
         if (activeEnv) {
             const variable = activeEnv.variables.find(
                 (v) => v.name === variableName && v.enabled

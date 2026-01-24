@@ -20,10 +20,10 @@ export class VariableService {
      * @param requestVariables - Optional request-level variables (highest precedence)
      * @returns Merged variables record with proper precedence applied
      */
-    getResolvedVariables(
+    async getResolvedVariables(
         collectionId?: string,
         requestVariables?: Record<string, string>
-    ): Record<string, string> {
+    ): Promise<Record<string, string>> {
         const variables: Record<string, string> = {};
 
         // 4. Collection variables (lowest precedence among user-defined)
@@ -35,7 +35,7 @@ export class VariableService {
         }
 
         // 3. Active Environment variables (higher precedence than collection)
-        const activeEnvironment = this.storageService.getActiveEnvironment();
+        const activeEnvironment = await this.storageService.getActiveEnvironment();
         if (activeEnvironment) {
             for (const envVar of activeEnvironment.variables) {
                 if (envVar.enabled) {
@@ -64,13 +64,13 @@ export class VariableService {
      * @param options - Optional resolver configuration
      * @returns Text with variables resolved
      */
-    resolveText(
+    async resolveText(
         text: string,
         collectionId?: string,
         requestVariables?: Record<string, string>,
         options?: ResolverOptions
-    ): string {
-        const variables = this.getResolvedVariables(collectionId, requestVariables);
+    ): Promise<string> {
+        const variables = await this.getResolvedVariables(collectionId, requestVariables);
         return resolveVariables(text, variables, options);
     }
 
@@ -83,13 +83,13 @@ export class VariableService {
      * @param options - Optional resolver configuration
      * @returns Request object with variables resolved
      */
-    resolveRequest(
+    async resolveRequest(
         request: { url: string; headers: { name: string; value: string }[]; body?: string },
         collectionId?: string,
         requestVariables?: Record<string, string>,
         options?: ResolverOptions
-    ): { url: string; headers: { name: string; value: string }[]; body?: string } {
-        const variables = this.getResolvedVariables(collectionId, requestVariables);
+    ): Promise<{ url: string; headers: { name: string; value: string }[]; body?: string }> {
+        const variables = await this.getResolvedVariables(collectionId, requestVariables);
 
         return {
             url: resolveVariables(request.url, variables, options),
@@ -108,15 +108,15 @@ export class VariableService {
      * @param requestVariables - Optional request-level variables
      * @returns Object with variables grouped by source
      */
-    getVariablesPreview(
+    async getVariablesPreview(
         collectionId?: string,
         requestVariables?: Record<string, string>
-    ): {
+    ): Promise<{
         collection: Record<string, string>;
         environment: Record<string, string>;
         request: Record<string, string>;
         merged: Record<string, string>;
-    } {
+    }> {
         const collectionVars: Record<string, string> = {};
         const environmentVars: Record<string, string> = {};
         const requestVars: Record<string, string> = requestVariables || {};
@@ -130,7 +130,7 @@ export class VariableService {
         }
 
         // Get environment variables
-        const activeEnvironment = this.storageService.getActiveEnvironment();
+        const activeEnvironment = await this.storageService.getActiveEnvironment();
         if (activeEnvironment) {
             for (const envVar of activeEnvironment.variables) {
                 if (envVar.enabled) {
@@ -143,7 +143,7 @@ export class VariableService {
             collection: collectionVars,
             environment: environmentVars,
             request: requestVars,
-            merged: this.getResolvedVariables(collectionId, requestVariables),
+            merged: await this.getResolvedVariables(collectionId, requestVariables),
         };
     }
 }
