@@ -238,6 +238,10 @@ export class CollectionSettingsPanel {
             <span class="codicon codicon-add"></span>
             Add Header
         </vscode-button>
+        <vscode-button class="add-row-btn" appearance="secondary" data-action="addCommonHeaders" style="margin-left: 8px;">
+            <span class="codicon codicon-sparkle"></span>
+            Add Common Headers
+        </vscode-button>
     </div>
 
     <div class="section">
@@ -393,19 +397,54 @@ export class CollectionSettingsPanel {
                 addHeaderRow();
             });
 
-            function addHeaderRow() {
+            // Add common headers button
+            document.querySelector('[data-action="addCommonHeaders"]').addEventListener('click', () => {
+                addCommonHeaders();
+            });
+
+            const commonHeaders = [
+                { name: 'Accept', value: 'application/json' },
+                { name: 'Content-Type', value: 'application/json' },
+                { name: 'User-Agent', value: 'Endpoint/1.0' },
+                { name: 'Accept-Encoding', value: 'gzip, deflate' },
+                { name: 'Cache-Control', value: 'no-cache' }
+            ];
+
+            function addCommonHeaders() {
+                const existingKeys = new Set();
+                document.getElementById('headersBody').querySelectorAll('tr').forEach(row => {
+                    const keyInput = row.querySelector('vscode-textfield[data-field="key"]');
+                    if (keyInput && keyInput.value) {
+                        existingKeys.add(keyInput.value.toLowerCase());
+                    }
+                });
+
+                let addedCount = 0;
+                commonHeaders.forEach(header => {
+                    if (!existingKeys.has(header.name.toLowerCase())) {
+                        addHeaderRow(header.name, header.value, true);
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount === 0) {
+                    // All common headers already exist
+                }
+            }
+
+            function addHeaderRow(key = '', value = '', enabled = true) {
                 const tbody = document.getElementById('headersBody');
                 const row = document.createElement('tr');
                 row.className = 'key-value-row';
                 row.innerHTML = \`
                     <td class="checkbox-cell">
-                        <vscode-checkbox checked></vscode-checkbox>
+                        <vscode-checkbox \${enabled ? 'checked' : ''}></vscode-checkbox>
                     </td>
                     <td>
-                        <vscode-textfield data-field="key" placeholder="Key"></vscode-textfield>
+                        <vscode-textfield data-field="key" placeholder="Key" value="\${key}"></vscode-textfield>
                     </td>
                     <td>
-                        <vscode-textfield data-field="value" placeholder="Value"></vscode-textfield>
+                        <vscode-textfield data-field="value" placeholder="Value" value="\${value}"></vscode-textfield>
                     </td>
                     <td class="delete-cell">
                         <button class="delete-btn" data-action="deleteRow">

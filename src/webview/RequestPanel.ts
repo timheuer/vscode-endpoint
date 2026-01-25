@@ -122,6 +122,30 @@ export class RequestPanel {
      */
     public static openRequest(extensionUri: vscode.Uri, request: Request, collectionId?: string): RequestPanel {
         const requestData = requestToRequestData(request);
+
+        // Fetch inherited headers and auth from collection if available
+        if (collectionId && RequestPanel._storageService) {
+            const collection = RequestPanel._storageService.getCollection(collectionId);
+            if (collection) {
+                // Inherited headers
+                if (collection.defaultHeaders && collection.defaultHeaders.length > 0) {
+                    requestData.inheritedHeaders = collection.defaultHeaders
+                        .filter(h => h.name) // Only include headers with names
+                        .map(h => ({ key: h.name, value: h.value }));
+                    // Default all inherited headers to enabled
+                    requestData.inheritedHeadersState = {};
+                    requestData.inheritedHeaders.forEach(h => {
+                        requestData.inheritedHeadersState![h.key] = true;
+                    });
+                }
+
+                // Inherited auth
+                if (collection.defaultAuth && collection.defaultAuth.type !== 'none') {
+                    requestData.inheritedAuth = collection.defaultAuth;
+                }
+            }
+        }
+
         return RequestPanel.createOrShow(extensionUri, requestData, collectionId);
     }
 
@@ -265,18 +289,23 @@ export class RequestPanel {
             url += (url.includes('?') ? '&' : '?') + searchParams.toString();
         }
 
-        // Build headers - merge collection defaults with request headers
-        // Request headers override collection defaults
+        // Build headers - merge enabled inherited headers with request headers
+        // Request headers override inherited headers
         const headers: Record<string, string> = {};
 
-        // First apply collection default headers
-        if (collectionDefaults.headers) {
-            collectionDefaults.headers.filter(h => h.enabled && h.name).forEach(h => {
-                headers[h.name] = h.value;
+        // First apply enabled inherited headers
+        if (data.inheritedHeaders && data.inheritedHeaders.length > 0) {
+            const inheritedState = data.inheritedHeadersState || {};
+            data.inheritedHeaders.forEach(h => {
+                // Only include if enabled (default to true if not specified)
+                const isEnabled = inheritedState[h.key] !== undefined ? inheritedState[h.key] : true;
+                if (isEnabled && h.key) {
+                    headers[h.key] = h.value;
+                }
             });
         }
 
-        // Then apply request-specific headers (overrides collection defaults)
+        // Then apply request-specific headers (overrides inherited headers)
         data.headers.filter(h => h.enabled && h.key).forEach(h => {
             headers[h.key] = h.value;
         });

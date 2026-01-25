@@ -9,6 +9,9 @@ export interface RequestData {
     url: string;
     queryParams: { key: string; value: string; enabled: boolean }[];
     headers: { key: string; value: string; enabled: boolean }[];
+    inheritedHeaders?: { key: string; value: string }[];
+    inheritedHeadersState?: Record<string, boolean>;
+    inheritedAuth?: AuthConfig;
     auth: AuthConfig;
     body: RequestBody;
 }
@@ -426,6 +429,160 @@ export function generateRequestPanelHtml(
             --checkbox-size: 16px;
         }
 
+        /* Inherited headers styles */
+        .inherited-headers-section {
+            margin-bottom: 16px;
+        }
+
+        .inherited-headers-details {
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: 4px;
+            background-color: var(--vscode-editor-inactiveSelectionBackground);
+        }
+
+        .inherited-headers-details summary {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--vscode-foreground);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .inherited-headers-details summary:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .inherited-headers-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .inherited-headers-details summary::before {
+            content: '';
+            border: 5px solid transparent;
+            border-left-color: var(--vscode-foreground);
+            margin-right: 4px;
+            transition: transform 0.1s;
+        }
+
+        .inherited-headers-details[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .inherited-headers-content {
+            padding: 8px 12px 12px;
+            border-top: 1px solid var(--vscode-widget-border);
+        }
+
+        .inherited-badge {
+            background-color: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: normal;
+            margin-left: auto;
+        }
+
+        .inherited-row {
+            background-color: transparent;
+        }
+
+        .inherited-row vscode-textfield {
+            width: 100%;
+        }
+
+        /* Inherited auth styles */
+        .inherited-auth-section {
+            margin-bottom: 16px;
+        }
+
+        .inherited-auth-details {
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: 4px;
+            background-color: var(--vscode-editor-inactiveSelectionBackground);
+        }
+
+        .inherited-auth-details summary {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--vscode-foreground);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .inherited-auth-details summary:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .inherited-auth-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .inherited-auth-details summary::before {
+            content: '';
+            border: 5px solid transparent;
+            border-left-color: var(--vscode-foreground);
+            margin-right: 4px;
+            transition: transform 0.1s;
+        }
+
+        .inherited-auth-details[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .inherited-auth-content {
+            padding: 8px 12px 12px;
+            border-top: 1px solid var(--vscode-widget-border);
+        }
+
+        .inherited-auth-type {
+            background-color: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: normal;
+            margin-left: auto;
+            text-transform: capitalize;
+        }
+
+        .inherited-auth-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .inherited-auth-field:last-child {
+            margin-bottom: 0;
+        }
+
+        .inherited-auth-field label {
+            width: 100px;
+            flex-shrink: 0;
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .inherited-auth-field vscode-textfield {
+            flex: 1;
+        }
+
+        .no-inherited-headers {
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+            font-size: 12px;
+            padding: 8px 0;
+        }
+
         /* Autocomplete dropdown styles */
         .autocomplete-dropdown {
             position: fixed;
@@ -545,6 +702,33 @@ export function generateRequestPanelHtml(
 
         <!-- Headers Tab -->
         <vscode-tab-panel>
+            <!-- Inherited Headers Section -->
+            <div class="inherited-headers-section" id="inheritedHeadersSection" style="${!data.inheritedHeaders || data.inheritedHeaders.length === 0 ? 'display: none;' : ''}">
+                <details class="inherited-headers-details">
+                    <summary>
+                        <span class="codicon codicon-link"></span>
+                        Inherited Headers
+                        <span class="inherited-badge" id="inheritedCount">${data.inheritedHeaders?.length || 0}</span>
+                    </summary>
+                    <div class="inherited-headers-content">
+                        <table class="key-value-table" id="inheritedHeadersTable">
+                            <thead>
+                                <tr>
+                                    <th class="checkbox-cell"></th>
+                                    <th>Key</th>
+                                    <th>Value</th>
+                                    <th class="delete-cell"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="inheritedHeadersBody">
+                                ${renderInheritedHeaderRows(data.inheritedHeaders || [], data.inheritedHeadersState || {})}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Request Headers Section -->
             <table class="key-value-table" id="headersTable">
                 <thead>
                     <tr>
@@ -566,6 +750,20 @@ export function generateRequestPanelHtml(
 
         <!-- Auth Tab -->
         <vscode-tab-panel>
+            <!-- Inherited Auth Section -->
+            <div class="inherited-auth-section" id="inheritedAuthSection" style="${!data.inheritedAuth || data.inheritedAuth.type === 'none' ? 'display: none;' : ''}">
+                <details class="inherited-auth-details">
+                    <summary>
+                        <span class="codicon codicon-link"></span>
+                        Inherited Auth
+                        <span class="inherited-auth-type" id="inheritedAuthType">${data.inheritedAuth?.type || 'none'}</span>
+                    </summary>
+                    <div class="inherited-auth-content" id="inheritedAuthContent">
+                        ${renderInheritedAuth(data.inheritedAuth)}
+                    </div>
+                </details>
+            </div>
+
             <div class="auth-section">
                 <vscode-single-select id="authType">
                     <vscode-option value="none" ${data.auth.type === 'none' ? 'selected' : ''}>No Auth</vscode-option>
@@ -761,6 +959,9 @@ export function generateRequestPanelHtml(
             
             // Initial state
             let requestData = ${JSON.stringify(data)};
+            let inheritedHeaders = requestData.inheritedHeaders || [];
+            let inheritedHeadersState = requestData.inheritedHeadersState || {};
+            let inheritedAuth = requestData.inheritedAuth || null;
             
             // Autocomplete state
             let availableVariables = [];
@@ -789,6 +990,19 @@ export function generateRequestPanelHtml(
                 const url = document.getElementById('url').value;
                 const queryParams = collectKeyValueRows('queryParamsBody', 'queryParam');
                 const headers = collectKeyValueRows('headersBody', 'header');
+                
+                // Collect inherited headers state
+                const collectedInheritedState = {};
+                const inheritedRows = document.querySelectorAll('#inheritedHeadersBody tr');
+                inheritedRows.forEach(row => {
+                    const checkbox = row.querySelector('vscode-checkbox');
+                    const keySpan = row.querySelector('[data-inherited-key]');
+                    if (checkbox && keySpan) {
+                        const key = keySpan.dataset.inheritedKey;
+                        collectedInheritedState[key] = checkbox.checked;
+                    }
+                });
+                inheritedHeadersState = collectedInheritedState;
                 
                 const authType = document.getElementById('authType').value;
                 const auth = { type: authType };
@@ -822,6 +1036,9 @@ export function generateRequestPanelHtml(
                     url,
                     queryParams,
                     headers,
+                    inheritedHeaders: inheritedHeaders,
+                    inheritedHeadersState: inheritedHeadersState,
+                    inheritedAuth: inheritedAuth,
                     auth,
                     body: { type: bodyType, content: bodyContent }
                 };
@@ -866,6 +1083,15 @@ export function generateRequestPanelHtml(
                 if (state.headers && Array.isArray(state.headers)) {
                     restoreKeyValueRows('headersBody', state.headers);
                 }
+                
+                // Restore inherited headers and their state
+                if (state.inheritedHeaders && Array.isArray(state.inheritedHeaders)) {
+                    inheritedHeaders = state.inheritedHeaders;
+                }
+                if (state.inheritedHeadersState) {
+                    inheritedHeadersState = state.inheritedHeadersState;
+                }
+                restoreInheritedHeadersState(state.inheritedHeaders || inheritedHeaders, state.inheritedHeadersState || inheritedHeadersState);
                 
                 // Restore auth
                 if (state.auth) {
@@ -932,6 +1158,67 @@ export function generateRequestPanelHtml(
                 }
             }
             
+            function restoreInheritedHeadersState(headers, state) {
+                const tbody = document.getElementById('inheritedHeadersBody');
+                if (!tbody) return;
+                
+                // Clear existing rows
+                tbody.innerHTML = '';
+                
+                // Render inherited header rows
+                if (headers && headers.length > 0) {
+                    headers.forEach(header => {
+                        const isEnabled = state && state[header.key] !== undefined ? state[header.key] : true;
+                        const row = document.createElement('tr');
+                        row.className = 'key-value-row inherited-row';
+                        row.innerHTML = \`
+                            <td class="checkbox-cell">
+                                <vscode-checkbox \${isEnabled ? 'checked' : ''}></vscode-checkbox>
+                            </td>
+                            <td>
+                                <vscode-textfield data-inherited-key="\${escapeHtmlInJs(header.key)}" value="\${escapeHtmlInJs(header.key)}" disabled></vscode-textfield>
+                            </td>
+                            <td>
+                                <vscode-textfield value="\${escapeHtmlInJs(header.value)}" disabled></vscode-textfield>
+                            </td>
+                            <td class="delete-cell">
+                                <!-- No delete button for inherited headers -->
+                            </td>
+                        \`;
+                        tbody.appendChild(row);
+                        
+                        // Add change handler for checkbox
+                        row.querySelector('vscode-checkbox').addEventListener('change', saveState);
+                    });
+                }
+                
+                updateInheritedHeadersVisibility(headers);
+            }
+            
+            function updateInheritedHeadersVisibility(headers) {
+                const section = document.getElementById('inheritedHeadersSection');
+                const countBadge = document.getElementById('inheritedCount');
+                
+                if (headers && headers.length > 0) {
+                    if (section) section.style.display = '';
+                    if (countBadge) countBadge.textContent = headers.length;
+                } else {
+                    if (section) section.style.display = 'none';
+                }
+            }
+
+            function updateInheritedAuthVisibility(auth) {
+                const section = document.getElementById('inheritedAuthSection');
+                const typeBadge = document.getElementById('inheritedAuthType');
+                
+                if (auth && auth.type && auth.type !== 'none') {
+                    if (section) section.style.display = '';
+                    if (typeBadge) typeBadge.textContent = auth.type;
+                } else {
+                    if (section) section.style.display = 'none';
+                }
+            }
+
             function restoreKeyValueRows(tbodyId, items) {
                 const tbody = document.getElementById(tbodyId);
                 if (!tbody) return;
@@ -1104,7 +1391,22 @@ export function generateRequestPanelHtml(
                 switch (message.type) {
                     case 'loadRequest':
                         requestData = message.data;
+                        inheritedHeaders = message.data.inheritedHeaders || [];
+                        inheritedHeadersState = message.data.inheritedHeadersState || {};
+                        inheritedAuth = message.data.inheritedAuth || null;
                         restoreState(requestData);
+                        updateInheritedAuthVisibility(inheritedAuth);
+                        saveState();
+                        break;
+                    case 'updateInheritedHeaders':
+                        inheritedHeaders = message.data.inheritedHeaders || [];
+                        // Preserve existing state for headers that still exist
+                        const newState = {};
+                        inheritedHeaders.forEach(h => {
+                            newState[h.key] = inheritedHeadersState[h.key] !== undefined ? inheritedHeadersState[h.key] : true;
+                        });
+                        inheritedHeadersState = newState;
+                        restoreInheritedHeadersState(inheritedHeaders, inheritedHeadersState);
                         saveState();
                         break;
                     case 'showResponse':
@@ -1676,5 +1978,75 @@ function renderFormDataRows(content: string): string {
         return renderKeyValueRows(items, 'formData');
     } catch {
         return '';
+    }
+}
+
+function renderInheritedHeaderRows(headers: { key: string; value: string }[], state: Record<string, boolean>): string {
+    if (!headers || headers.length === 0) {
+        return '';
+    }
+
+    return headers.map(header => {
+        const isEnabled = state && state[header.key] !== undefined ? state[header.key] : true;
+        return `
+        <tr class="key-value-row inherited-row">
+            <td class="checkbox-cell">
+                <vscode-checkbox ${isEnabled ? 'checked' : ''}></vscode-checkbox>
+            </td>
+            <td>
+                <vscode-textfield data-inherited-key="${escapeHtml(header.key)}" value="${escapeHtml(header.key)}" disabled></vscode-textfield>
+            </td>
+            <td>
+                <vscode-textfield value="${escapeHtml(header.value)}" disabled></vscode-textfield>
+            </td>
+            <td class="delete-cell">
+                <!-- No delete button for inherited headers -->
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+function renderInheritedAuth(auth: AuthConfig | undefined): string {
+    if (!auth || auth.type === 'none') {
+        return '<div class="inherited-auth-field"><span>No authentication configured</span></div>';
+    }
+
+    switch (auth.type) {
+        case 'basic':
+            return `
+                <div class="inherited-auth-field">
+                    <label>Username</label>
+                    <vscode-textfield value="${escapeHtml(auth.username || '')}" disabled></vscode-textfield>
+                </div>
+                <div class="inherited-auth-field">
+                    <label>Password</label>
+                    <vscode-textfield type="password" value="${escapeHtml(auth.password || '')}" disabled></vscode-textfield>
+                </div>
+            `;
+        case 'bearer':
+            return `
+                <div class="inherited-auth-field">
+                    <label>Token</label>
+                    <vscode-textfield type="password" value="${escapeHtml(auth.token || '')}" disabled></vscode-textfield>
+                </div>
+            `;
+        case 'apikey':
+            return `
+                <div class="inherited-auth-field">
+                    <label>Key Name</label>
+                    <vscode-textfield value="${escapeHtml(auth.apiKeyName || '')}" disabled></vscode-textfield>
+                </div>
+                <div class="inherited-auth-field">
+                    <label>Key Value</label>
+                    <vscode-textfield type="password" value="${escapeHtml(auth.apiKeyValue || '')}" disabled></vscode-textfield>
+                </div>
+                <div class="inherited-auth-field">
+                    <label>Add to</label>
+                    <vscode-textfield value="${auth.apiKeyIn === 'query' ? 'Query Params' : 'Header'}" disabled></vscode-textfield>
+                </div>
+            `;
+        default:
+            return '';
     }
 }
