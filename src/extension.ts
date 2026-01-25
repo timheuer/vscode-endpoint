@@ -7,7 +7,7 @@ import { CollectionSettingsPanel } from './webview/CollectionSettingsPanel';
 import { registerResponseContentProvider } from './http/ResponseContentProvider';
 import { StorageService, VariableService } from './storage';
 import { Collection } from './models/Collection';
-import { createImportExportCommands } from './commands';
+import { createImportExportCommands, createCopyAsCodeCommand } from './commands';
 import { initializeLogger, disposeLogger, getLogger } from './logger';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -195,6 +195,11 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.commands.registerCommand(command, callback)
 		);
 	}
+
+	// Code generation command
+	context.subscriptions.push(
+		vscode.commands.registerCommand('endpoint.copyAsCode', createCopyAsCodeCommand(storageService, variableService))
+	);
 
 	logger.info('Endpoint extension activated');
 }

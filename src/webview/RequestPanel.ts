@@ -8,6 +8,8 @@ import { ResponseDisplay } from '../http/ResponseDisplay';
 import { StorageService } from '../storage/StorageService';
 import { VariableService } from '../storage/VariableService';
 import { ResponseStorage } from '../storage/ResponseStorage';
+import { getGenerator } from '../codegen';
+import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
 
 export class RequestPanel {
     public static currentPanel: RequestPanel | undefined;
@@ -142,6 +144,7 @@ export class RequestPanel {
                 // Inherited auth
                 if (collection.defaultAuth && collection.defaultAuth.type !== 'none') {
                     requestData.inheritedAuth = collection.defaultAuth;
+                    requestData.useInheritedAuth = true;
                 }
             }
         }
@@ -204,6 +207,12 @@ export class RequestPanel {
             case 'getAvailableVariables':
                 this._getAvailableVariables();
                 break;
+            case 'generateCodeSnippet':
+                this._generateCodeSnippet(message.data, message.language, message.resolveVariables);
+                break;
+            case 'copyToClipboard':
+                this._copyToClipboard(message.text);
+                break;
         }
     }
 
@@ -250,6 +259,155 @@ export class RequestPanel {
             // Return just built-ins on error
             this._panel.webview.postMessage({ type: 'variablesList', data: variables });
         }
+    }
+
+    private async _generateCodeSnippet(data: RequestData, language: string, resolveVariables: boolean): Promise<void> {
+        if (!RequestPanel._variableService || !RequestPanel._storageService) {
+            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', highlightedCode: '<pre><code>// Services not initialized</code></pre>', rawCode: '// Services not initialized' });
+            return;
+        }
+
+        try {
+            const code = await this._buildCodeSnippet(data, language, resolveVariables);
+            const highlightedCode = await SyntaxHighlighter.getInstance().highlight(code, language);
+            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', highlightedCode, rawCode: code });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorCode = `// Error: ${errorMessage}`;
+            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', highlightedCode: `<pre><code>${errorCode}</code></pre>`, rawCode: errorCode });
+        }
+    }
+
+    private async _buildCodeSnippet(data: RequestData, language: string, resolveVariables: boolean): Promise<string> {
+        const generator = getGenerator(language);
+        if (!generator) {
+            return `// Unknown language: ${language}`;
+        }
+
+        // Build URL with query params
+        let url = data.url;
+        const queryParams = data.queryParams.filter(p => p.enabled && p.key);
+        if (queryParams.length > 0) {
+            const searchParams = new URLSearchParams();
+            queryParams.forEach(p => searchParams.append(p.key, p.value));
+            url += (url.includes('?') ? '&' : '?') + searchParams.toString();
+        }
+
+        if (resolveVariables && RequestPanel._variableService) {
+            url = await RequestPanel._variableService.resolveText(url, this._collectionId);
+        }
+
+        // Build headers
+        const headers: { name: string; value: string }[] = [];
+
+        // Add enabled inherited headers first
+        if (data.inheritedHeaders && data.inheritedHeaders.length > 0) {
+            const state = data.inheritedHeadersState || {};
+            for (const h of data.inheritedHeaders) {
+                const isEnabled = state[h.key] !== undefined ? state[h.key] : true;
+                if (isEnabled && h.key) {
+                    let value = h.value;
+                    if (resolveVariables && RequestPanel._variableService) {
+                        value = await RequestPanel._variableService.resolveText(value, this._collectionId);
+                    }
+                    headers.push({ name: h.key, value });
+                }
+            }
+        }
+
+        // Add request headers (override inherited)
+        for (const h of data.headers) {
+            if (h.enabled && h.key) {
+                const key = h.key.toLowerCase();
+                const existingIndex = headers.findIndex(hdr => hdr.name.toLowerCase() === key);
+                if (existingIndex !== -1) {
+                    headers.splice(existingIndex, 1);
+                }
+                let value = h.value;
+                if (resolveVariables && RequestPanel._variableService) {
+                    value = await RequestPanel._variableService.resolveText(value, this._collectionId);
+                }
+                headers.push({ name: h.key, value });
+            }
+        }
+
+        // Handle auth - respect useInheritedAuth toggle
+        // If useInheritedAuth is true and inherited auth exists, use it
+        // Otherwise use request auth
+        let effectiveAuth = data.auth;
+        if (data.useInheritedAuth !== false && data.inheritedAuth && data.inheritedAuth.type !== 'none') {
+            effectiveAuth = data.inheritedAuth;
+        }
+
+        if (effectiveAuth && effectiveAuth.type === 'basic' && effectiveAuth.username) {
+            let username = effectiveAuth.username;
+            let password = effectiveAuth.password || '';
+            if (resolveVariables && RequestPanel._variableService) {
+                username = await RequestPanel._variableService.resolveText(username, this._collectionId);
+                password = await RequestPanel._variableService.resolveText(password, this._collectionId);
+            }
+            const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+            headers.push({ name: 'Authorization', value: `Basic ${credentials}` });
+        } else if (effectiveAuth && effectiveAuth.type === 'bearer' && effectiveAuth.token) {
+            let token = effectiveAuth.token;
+            if (resolveVariables && RequestPanel._variableService) {
+                token = await RequestPanel._variableService.resolveText(token, this._collectionId);
+            }
+            headers.push({ name: 'Authorization', value: `Bearer ${token}` });
+        } else if (effectiveAuth && effectiveAuth.type === 'apikey' && effectiveAuth.apiKeyName) {
+            let keyValue = effectiveAuth.apiKeyValue || '';
+            if (resolveVariables && RequestPanel._variableService) {
+                keyValue = await RequestPanel._variableService.resolveText(keyValue, this._collectionId);
+            }
+            if (effectiveAuth.apiKeyIn === 'header') {
+                headers.push({ name: effectiveAuth.apiKeyName, value: keyValue });
+            } else {
+                const separator = url.includes('?') ? '&' : '?';
+                url += `${separator}${encodeURIComponent(effectiveAuth.apiKeyName)}=${encodeURIComponent(keyValue)}`;
+            }
+        }
+
+        // Build resolved request
+        const resolvedRequest: any = {
+            method: data.method,
+            url,
+            headers,
+        };
+
+        // Add body if present
+        if (data.body && data.body.type !== 'none' && data.body.content) {
+            let content = data.body.content;
+            if (resolveVariables && RequestPanel._variableService) {
+                content = await RequestPanel._variableService.resolveText(content, this._collectionId);
+            }
+
+            // Add Content-Type header if not present
+            const hasContentType = headers.some(h => h.name.toLowerCase() === 'content-type');
+            if (!hasContentType) {
+                const contentTypeMap: Record<string, string> = {
+                    json: 'application/json',
+                    xml: 'application/xml',
+                    form: 'application/x-www-form-urlencoded',
+                    text: 'text/plain',
+                };
+                const contentType = contentTypeMap[data.body.type];
+                if (contentType) {
+                    headers.push({ name: 'Content-Type', value: contentType });
+                }
+            }
+
+            resolvedRequest.body = {
+                type: data.body.type,
+                content,
+            };
+        }
+
+        return generator.generate(resolvedRequest);
+    }
+
+    private async _copyToClipboard(text: string): Promise<void> {
+        await vscode.env.clipboard.writeText(text);
+        vscode.window.showInformationMessage('Code copied to clipboard');
     }
 
     private async _openResponseInEditor(): Promise<void> {
@@ -421,6 +579,10 @@ export class RequestPanel {
                 responseStorage.storeResponse(data.name, response);
             }
 
+            // Highlight response body based on content type
+            const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
+            const highlightedBody = await SyntaxHighlighter.getInstance().highlightResponse(response.body, contentType);
+
             // Send response to webview for display in tabbed view
             this._panel.webview.postMessage({
                 type: 'showResponse',
@@ -430,7 +592,8 @@ export class RequestPanel {
                     time: response.time,
                     size: response.size,
                     headers: response.headers,
-                    body: response.body
+                    body: response.body,
+                    highlightedBody
                 }
             });
 

@@ -24,7 +24,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [ ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -233,6 +233,12 @@
         "title": "Export Collection",
         "icon": "$(export)",
         "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.copyAsCode",
+        "title": "Copy as Code",
+        "icon": "$(code)",
+        "category": "Endpoint"
       }
     ],
     "menus": {
@@ -345,6 +351,11 @@
           "group": "2_delete"
         },
         {
+          "command": "endpoint.copyAsCode",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "1_crud@3"
+        },
+        {
           "command": "endpoint.setActiveEnvironment",
           "when": "view == endpointEnvironments && viewItem == environment",
           "group": "0_active"
@@ -434,7 +445,14 @@
         "endpoint.logLevel": {
           "type": "string",
           "default": "info",
-          "enum": [ "off", "error", "warn", "info", "debug", "trace" ],
+          "enum": [
+            "off",
+            "error",
+            "warn",
+            "info",
+            "debug",
+            "trace"
+          ],
           "enumDescriptions": [
             "No logging",
             "Only errors",
@@ -470,7 +488,7 @@
         },
         "endpoint.historyLimit": {
           "type": "number",
-          "default": 100,
+          "default": 20,
           "minimum": 0,
           "maximum": 1000,
           "description": "Maximum number of history items to retain"
@@ -478,7 +496,13 @@
         "endpoint.defaultContentType": {
           "type": "string",
           "default": "json",
-          "enum": [ "json", "form", "xml", "text", "none" ],
+          "enum": [
+            "json",
+            "form",
+            "xml",
+            "text",
+            "none"
+          ],
           "enumDescriptions": [
             "application/json",
             "application/x-www-form-urlencoded",
@@ -521,6 +545,7 @@
   "dependencies": {
     "@timheuer/vscode-ext-logger": "^0.1.35",
     "@vscode-elements/elements": "^1.2.0",
-    "@vscode/codicons": "^0.0.36"
+    "@vscode/codicons": "^0.0.36",
+    "shiki": "^3.21.0"
   }
 }

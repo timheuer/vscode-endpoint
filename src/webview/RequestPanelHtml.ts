@@ -13,6 +13,7 @@ export interface RequestData {
     inheritedHeaders?: { key: string; value: string }[];
     inheritedHeadersState?: Record<string, boolean>;
     inheritedAuth?: AuthConfig;
+    useInheritedAuth?: boolean;
     auth: AuthConfig;
     body: RequestBody;
 }
@@ -84,6 +85,23 @@ export function generateRequestPanelHtml(
             font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
+        }
+
+        /* Shiki dual-theme support - uses CSS variables for light/dark */
+        pre.shiki,
+        .shiki,
+        .shiki code,
+        .shiki .line,
+        .shiki span {
+            background-color: transparent !important;
+        }
+        .vscode-dark .shiki,
+        .vscode-dark .shiki span {
+            color: var(--shiki-dark) !important;
+        }
+        .vscode-light .shiki,
+        .vscode-light .shiki span {
+            color: var(--shiki-light) !important;
         }
 
         .request-bar {
@@ -181,6 +199,11 @@ export function generateRequestPanelHtml(
             display: flex;
             flex-direction: column;
             gap: 12px;
+        }
+
+        .auth-section.disabled {
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         .auth-fields {
@@ -336,6 +359,8 @@ export function generateRequestPanelHtml(
         .hl-attr-name { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
         .hl-attr-value { color: var(--vscode-debugTokenExpression-string, #ce9178); }
         .hl-comment { color: var(--vscode-descriptionForeground, #6a9955); font-style: italic; }
+        .hl-keyword { color: var(--vscode-symbolIcon-keywordForeground, #c586c0); }
+        .hl-function { color: var(--vscode-symbolIcon-functionForeground, #dcdcaa); }
 
         .response-tabs {
             margin-top: 12px;
@@ -349,9 +374,12 @@ export function generateRequestPanelHtml(
             background-color: var(--vscode-badge-background);
             color: var(--vscode-badge-foreground);
             border-radius: 10px;
-            padding: 2px 6px;
+            padding: 1px 6px;
             font-size: 11px;
             margin-left: 6px;
+            vertical-align: middle;
+            display: inline-block;
+            line-height: 1.4;
         }
 
         .headers-table {
@@ -500,49 +528,20 @@ export function generateRequestPanelHtml(
         /* Inherited auth styles */
         .inherited-auth-section {
             margin-bottom: 16px;
-        }
-
-        .inherited-auth-details {
             border: 1px solid var(--vscode-widget-border);
             border-radius: 4px;
             background-color: var(--vscode-editor-inactiveSelectionBackground);
+            padding: 12px;
         }
 
-        .inherited-auth-details summary {
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--vscode-foreground);
+        .inherited-auth-toggle {
             display: flex;
             align-items: center;
-            gap: 6px;
-            user-select: none;
+            gap: 8px;
         }
 
-        .inherited-auth-details summary:hover {
-            background-color: var(--vscode-list-hoverBackground);
-        }
-
-        .inherited-auth-details summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .inherited-auth-details summary::before {
-            content: '';
-            border: 5px solid transparent;
-            border-left-color: var(--vscode-foreground);
-            margin-right: 4px;
-            transition: transform 0.1s;
-        }
-
-        .inherited-auth-details[open] summary::before {
-            transform: rotate(90deg);
-        }
-
-        .inherited-auth-content {
-            padding: 8px 12px 12px;
-            border-top: 1px solid var(--vscode-widget-border);
+        .inherited-auth-toggle vscode-checkbox {
+            flex: 1;
         }
 
         .inherited-auth-type {
@@ -552,8 +551,17 @@ export function generateRequestPanelHtml(
             padding: 2px 8px;
             font-size: 10px;
             font-weight: normal;
-            margin-left: auto;
             text-transform: capitalize;
+        }
+
+        .inherited-auth-preview {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--vscode-widget-border);
+        }
+
+        .inherited-auth-preview.hidden {
+            display: none;
         }
 
         .inherited-auth-field {
@@ -645,6 +653,59 @@ export function generateRequestPanelHtml(
 
         .autocomplete-no-results {
             padding: 8px 10px;
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+        }
+
+        /* Code Snippet Tab Styles */
+        .code-snippet-controls {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .code-snippet-select-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .code-snippet-select-group label {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .code-snippet-select-group vscode-single-select {
+            min-width: 160px;
+        }
+
+        .code-snippet-output {
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-input-border, var(--vscode-widget-border));
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .code-snippet-output pre {
+            margin: 0;
+            padding: 12px;
+            overflow: auto;
+            max-height: 400px;
+        }
+
+        .code-snippet-output code {
+            font-family: var(--vscode-editor-font-family, monospace);
+            font-size: var(--vscode-editor-font-size, 13px);
+            line-height: 1.5;
+            white-space: pre;
+            color: var(--vscode-foreground);
+        }
+
+        .code-snippet-placeholder {
             color: var(--vscode-descriptionForeground);
             font-style: italic;
         }
@@ -754,19 +815,18 @@ export function generateRequestPanelHtml(
         <vscode-tab-panel>
             <!-- Inherited Auth Section -->
             <div class="inherited-auth-section" id="inheritedAuthSection" style="${!data.inheritedAuth || data.inheritedAuth.type === 'none' ? 'display: none;' : ''}">
-                <details class="inherited-auth-details">
-                    <summary>
-                        <span class="codicon codicon-link"></span>
-                        Inherited Auth
-                        <span class="inherited-auth-type" id="inheritedAuthType">${data.inheritedAuth?.type || 'none'}</span>
-                    </summary>
-                    <div class="inherited-auth-content" id="inheritedAuthContent">
-                        ${renderInheritedAuth(data.inheritedAuth)}
-                    </div>
-                </details>
+                <div class="inherited-auth-toggle">
+                    <vscode-checkbox id="useInheritedAuth" ${data.useInheritedAuth !== false ? 'checked' : ''}>
+                        Use inherited auth from collection
+                    </vscode-checkbox>
+                    <span class="inherited-auth-type" id="inheritedAuthType">${data.inheritedAuth?.type || 'none'}</span>
+                </div>
+                <div class="inherited-auth-preview" id="inheritedAuthPreview">
+                    ${renderInheritedAuth(data.inheritedAuth)}
+                </div>
             </div>
 
-            <div class="auth-section">
+            <div class="auth-section" id="authSection">
                 <vscode-single-select id="authType">
                     <vscode-option value="none" ${data.auth.type === 'none' ? 'selected' : ''}>No Auth</vscode-option>
                     <vscode-option value="basic" ${data.auth.type === 'basic' ? 'selected' : ''}>Basic Auth</vscode-option>
@@ -904,6 +964,7 @@ export function generateRequestPanelHtml(
             <vscode-tab-header slot="header">Headers <span class="tab-badge" id="headersCount">0</span></vscode-tab-header>
             <vscode-tab-header slot="header">Cookies <span class="tab-badge" id="cookiesCount">0</span></vscode-tab-header>
             <vscode-tab-header slot="header">Raw</vscode-tab-header>
+            <vscode-tab-header slot="header">Code Snippet</vscode-tab-header>
 
             <!-- Response Body Tab -->
             <vscode-tab-panel>
@@ -949,6 +1010,39 @@ export function generateRequestPanelHtml(
             <vscode-tab-panel>
                 <div class="response-tab-content">
                     <div class="response-body" id="responseRaw"></div>
+                </div>
+            </vscode-tab-panel>
+
+            <!-- Code Snippet Tab -->
+            <vscode-tab-panel>
+                <div class="response-tab-content">
+                    <div class="code-snippet-controls">
+                        <div class="code-snippet-select-group">
+                            <label>Language</label>
+                            <vscode-single-select id="codeLanguage">
+                                <vscode-option value="curl" selected>cURL</vscode-option>
+                                <vscode-option value="javascript-fetch">JavaScript (fetch)</vscode-option>
+                                <vscode-option value="python-requests">Python (requests)</vscode-option>
+                                <vscode-option value="csharp-httpclient">C# (HttpClient)</vscode-option>
+                                <vscode-option value="go-nethttp">Go (net/http)</vscode-option>
+                                <vscode-option value="php-curl">PHP (cURL)</vscode-option>
+                            </vscode-single-select>
+                        </div>
+                        <div class="code-snippet-select-group">
+                            <label>Variables</label>
+                            <vscode-single-select id="codeVariables">
+                                <vscode-option value="resolve">Resolve values</vscode-option>
+                                <vscode-option value="keep" selected>Keep placeholders</vscode-option>
+                            </vscode-single-select>
+                        </div>
+                        <vscode-button id="copyCodeBtn" appearance="secondary">
+                            <span class="codicon codicon-copy"></span>
+                            Copy
+                        </vscode-button>
+                    </div>
+                    <div class="code-snippet-output" id="codeSnippetOutput">
+                        <pre><code id="codeSnippetCode">Send a request to generate code snippet</code></pre>
+                    </div>
                 </div>
             </vscode-tab-panel>
         </vscode-tabs>
@@ -1018,6 +1112,10 @@ export function generateRequestPanelHtml(
                     auth.apiKeyValue = document.getElementById('authApiKeyValue').value;
                     auth.apiKeyIn = document.getElementById('authApiKeyIn').value;
                 }
+                
+                // Check if using inherited auth
+                const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
+                const useInheritedAuth = useInheritedAuthCheckbox ? useInheritedAuthCheckbox.checked : false;
 
                 const bodyType = document.getElementById('bodyType').value;
                 let bodyContent = '';
@@ -1041,6 +1139,7 @@ export function generateRequestPanelHtml(
                     inheritedHeaders: inheritedHeaders,
                     inheritedHeadersState: inheritedHeadersState,
                     inheritedAuth: inheritedAuth,
+                    useInheritedAuth: useInheritedAuth,
                     auth,
                     body: { type: bodyType, content: bodyContent }
                 };
@@ -1131,6 +1230,15 @@ export function generateRequestPanelHtml(
                     }
                 }
                 
+                // Restore useInheritedAuth state
+                const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
+                if (useInheritedAuthCheckbox) {
+                    // Default to true if inherited auth exists and useInheritedAuth is not explicitly false
+                    const useInherited = state.useInheritedAuth !== false && inheritedAuth && inheritedAuth.type !== 'none';
+                    useInheritedAuthCheckbox.checked = useInherited;
+                    updateAuthSectionState();
+                }
+                
                 // Restore body
                 if (state.body) {
                     const bodyType = state.body.type || 'none';
@@ -1217,8 +1325,13 @@ export function generateRequestPanelHtml(
                 if (auth && auth.type && auth.type !== 'none') {
                     if (section) section.style.display = '';
                     if (typeBadge) typeBadge.textContent = auth.type;
+                    // Update auth section disabled state
+                    updateAuthSectionState();
                 } else {
                     if (section) section.style.display = 'none';
+                    // When there's no inherited auth, make sure auth section is enabled
+                    const authSection = document.getElementById('authSection');
+                    if (authSection) authSection.classList.remove('disabled');
                 }
             }
 
@@ -1282,6 +1395,31 @@ export function generateRequestPanelHtml(
                 saveState();
             });
 
+            // Use inherited auth toggle handler
+            function updateAuthSectionState() {
+                const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
+                const authSection = document.getElementById('authSection');
+                const inheritedAuthPreview = document.getElementById('inheritedAuthPreview');
+                
+                if (useInheritedAuthCheckbox && authSection) {
+                    const useInherited = useInheritedAuthCheckbox.checked;
+                    authSection.classList.toggle('disabled', useInherited);
+                    if (inheritedAuthPreview) {
+                        inheritedAuthPreview.classList.toggle('hidden', !useInherited);
+                    }
+                }
+            }
+            
+            const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
+            if (useInheritedAuthCheckbox) {
+                useInheritedAuthCheckbox.addEventListener('change', () => {
+                    updateAuthSectionState();
+                    saveState();
+                });
+                // Initialize state on load
+                updateAuthSectionState();
+            }
+
             // Secret field show/hide toggle
             document.querySelectorAll('.secret-toggle-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -1323,6 +1461,30 @@ export function generateRequestPanelHtml(
             document.getElementById('saveBtn').addEventListener('click', () => {
                 const data = collectRequestData();
                 vscode.postMessage({ type: 'saveRequest', data });
+            });
+
+            // Code Snippet tab handlers
+            let currentCodeSnippet = '';
+            
+            function generateCodeSnippet() {
+                const data = collectRequestData();
+                const language = document.getElementById('codeLanguage').value;
+                const resolveVars = document.getElementById('codeVariables').value === 'resolve';
+                vscode.postMessage({ 
+                    type: 'generateCodeSnippet', 
+                    data,
+                    language,
+                    resolveVariables: resolveVars
+                });
+            }
+            
+            document.getElementById('codeLanguage').addEventListener('change', generateCodeSnippet);
+            document.getElementById('codeVariables').addEventListener('change', generateCodeSnippet);
+            
+            document.getElementById('copyCodeBtn').addEventListener('click', () => {
+                if (currentCodeSnippet) {
+                    vscode.postMessage({ type: 'copyToClipboard', text: currentCodeSnippet });
+                }
             });
 
             // Open in Editor button handler
@@ -1424,6 +1586,23 @@ export function generateRequestPanelHtml(
                         break;
                     case 'variablesList':
                         availableVariables = message.data || [];
+                        break;
+                    case 'codeSnippetGenerated':
+                        currentCodeSnippet = message.rawCode || '';
+                        const outputEl = document.getElementById('codeSnippetOutput');
+                        if (outputEl) {
+                            if (message.highlightedCode) {
+                                // Use pre-highlighted HTML from extension host (Shiki generates own <pre><code>)
+                                outputEl.innerHTML = message.highlightedCode;
+                            } else if (currentCodeSnippet) {
+                                outputEl.innerHTML = '<pre><code>' + currentCodeSnippet.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>';
+                            } else {
+                                outputEl.innerHTML = '<pre><code class="code-snippet-placeholder">Failed to generate code</code></pre>';
+                            }
+                        }
+                        break;
+                    case 'codeCopied':
+                        // Notification handled by extension
                         break;
                 }
             });
@@ -1707,18 +1886,19 @@ export function generateRequestPanelHtml(
                 const isJson = contentType.includes('json') || response.body.trim().startsWith('{') || response.body.trim().startsWith('[');
                 const isXml = contentType.includes('xml') || response.body.trim().startsWith('<?xml') || response.body.trim().startsWith('<');
                 
-                // Response body tab - formatted with syntax highlighting
+                // Response body tab - use pre-highlighted HTML from extension host
                 const bodyEl = document.getElementById('responseBody');
-                if (isJson) {
+                if (response.highlightedBody) {
+                    // Use pre-highlighted HTML from extension host
+                    bodyEl.innerHTML = response.highlightedBody;
+                } else if (isJson) {
                     try {
                         const parsed = JSON.parse(response.body);
                         const formatted = JSON.stringify(parsed, null, 2);
-                        bodyEl.innerHTML = highlightJson(formatted);
+                        bodyEl.textContent = formatted;
                     } catch {
                         bodyEl.textContent = response.body;
                     }
-                } else if (isXml) {
-                    bodyEl.innerHTML = highlightXml(response.body);
                 } else {
                     bodyEl.textContent = response.body;
                 }
@@ -1773,6 +1953,9 @@ export function generateRequestPanelHtml(
                 
                 // Raw tab - unformatted response
                 document.getElementById('responseRaw').textContent = response.body;
+                
+                // Generate code snippet
+                generateCodeSnippet();
             }
             
             function escapeHtmlJs(text) {
@@ -1803,103 +1986,6 @@ export function generateRequestPanelHtml(
                 document.getElementById('noCookies').style.display = 'block';
                 document.getElementById('responseCookiesTable').style.display = 'none';
             }
-
-            function highlightJson(json) {
-                // Escape HTML first
-                const escaped = json
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
-                
-                // Apply syntax highlighting
-                return escaped.replace(
-                    /("(?:\\\\.|[^"\\\\])*")(\\s*:)?|(\\b(?:true|false)\\b)|(\\bnull\\b)|(\\b-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b)|([{}\\[\\],:])/g,
-                    (match, str, colon, bool, nul, num, punct) => {
-                        if (str) {
-                            if (colon) {
-                                // It's a key
-                                return '<span class=\"hl-key\">' + str + '</span>' + colon;
-                            }
-                            // It's a string value
-                            return '<span class=\"hl-string\">' + str + '</span>';
-                        }
-                        if (bool) return '<span class=\"hl-boolean\">' + bool + '</span>';
-                        if (nul) return '<span class=\"hl-null\">' + nul + '</span>';
-                        if (num) return '<span class=\"hl-number\">' + num + '</span>';
-                        if (punct) return '<span class=\"hl-punctuation\">' + punct + '</span>';
-                        return match;
-                    }
-                );
-            }
-
-            function highlightXml(xml) {
-                // Escape HTML entities but preserve structure for highlighting
-                let result = '';
-                let i = 0;
-                while (i < xml.length) {
-                    if (xml[i] === '<') {
-                        // Check for comment
-                        if (xml.substring(i, i + 4) === '<!--') {
-                            const endComment = xml.indexOf('-->', i);
-                            if (endComment !== -1) {
-                                const comment = xml.substring(i, endComment + 3);
-                                result += '<span class=\"hl-comment\">' + escapeHtmlJs(comment) + '</span>';
-                                i = endComment + 3;
-                                continue;
-                            }
-                        }
-                        
-                        // Find the end of the tag
-                        const tagEnd = xml.indexOf('>', i);
-                        if (tagEnd !== -1) {
-                            const tagContent = xml.substring(i + 1, tagEnd);
-                            const isClosing = tagContent.startsWith('/');
-                            const isSelfClosing = tagContent.endsWith('/');
-                            
-                            // Parse tag name and attributes
-                            const tagMatch = tagContent.match(/^\\/?([^\\s\\/]+)(.*?)(\\/?)$/s);
-                            if (tagMatch) {
-                                const tagName = tagMatch[1];
-                                const attrs = tagMatch[2];
-                                const trailing = tagMatch[3];
-                                
-                                result += '&lt;<span class=\"hl-tag\">' + (isClosing ? '/' : '') + escapeHtmlJs(tagName.replace(/^\\//, '')) + '</span>';
-                                
-                                // Highlight attributes
-                                if (attrs) {
-                                    result += attrs.replace(
-                                        /([\\w:-]+)(\\s*=\\s*)([\"'])(.*?)\\3/g,
-                                        (m, name, eq, quote, value) => 
-                                            '<span class=\"hl-attr-name\">' + escapeHtmlJs(name) + '</span>' + 
-                                            eq + quote + '<span class=\"hl-attr-value\">' + escapeHtmlJs(value) + '</span>' + quote
-                                    );
-                                }
-                                
-                                if (trailing || isSelfClosing) result += '/';
-                                result += '&gt;';
-                            } else {
-                                result += '&lt;' + escapeHtmlJs(tagContent) + '&gt;';
-                            }
-                            i = tagEnd + 1;
-                            continue;
-                        }
-                    }
-                    
-                    // Regular text
-                    if (xml[i] === '&') {
-                        result += '&amp;';
-                    } else if (xml[i] === '<') {
-                        result += '&lt;';
-                    } else if (xml[i] === '>') {
-                        result += '&gt;';
-                    } else {
-                        result += xml[i];
-                    }
-                    i++;
-                }
-                return result;
-            }
-
             function formatBytes(bytes) {
                 if (bytes === 0) return '0 B';
                 const k = 1024;

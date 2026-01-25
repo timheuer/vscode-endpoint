@@ -7,3 +7,8 @@ export {
     exportAllCollectionsToHttpFile,
     createImportExportCommands
 } from './ImportExportCommands';
+
+export {
+    createCopyAsCodeCommand,
+    handleWebviewCopyAsCode
+} from './CopyAsCodeCommand';

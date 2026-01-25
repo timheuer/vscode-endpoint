@@ -6,8 +6,9 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 ## Architecture
 
 ### Directory Structure
+- `src/codegen/` - Code generation for multiple languages (cURL, fetch, Python, C#, Go, PHP)
 - `src/commands/` - VS Code command implementations
-- `src/http/` - HTTP client, response handling
+- `src/http/` - HTTP client, response handling, syntax highlighting
 - `src/models/` - TypeScript interfaces
 - `src/parser/` - .http file parsing/serialization
 - `src/providers/` - TreeDataProvider classes for sidebar views
@@ -26,6 +27,8 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 8. **Logging**: Use `@timheuer/vscode-ext-logger` via `src/logger.ts`. Import `getLogger()` to access the logger. Log level controlled via `endpoint.logLevel` setting with automatic config monitoring.
 9. **Environment Variable Security**: Environment variable VALUES are stored in VS Code's SecretStorage (encrypted), while metadata (names, enabled flags) is stored in globalState. Methods `getEnvironments()`, `getEnvironment()`, `getActiveEnvironment()` are async. Variable values are masked in the tree view UI.
 10. **Settings**: Use `getSettings()` or `getSetting(key)` from `src/settings` to access user-configurable options. Settings are read fresh on each call (no caching) so changes take effect on next request.
+11. **Code Generation**: Use `src/codegen/` module for "Copy as Code" functionality. Implements `LanguageGenerator` interface with `id`, `name`, and `generate(ResolvedRequest)` method. Built-in generators: curl, javascript-fetch, python-requests, csharp-httpclient, go-nethttp, php-curl. Custom generators can be registered via `registerGenerator()`. Quick-pick flow offers variable resolution choice.
+12. **Syntax Highlighting**: Use `SyntaxHighlighter` singleton from `src/http/SyntaxHighlighter.ts` for code/response syntax highlighting. Uses Shiki with TextMate grammars (dynamic ESM import). Highlighting runs in extension host, sends pre-highlighted HTML to webview. Methods: `highlight(code, language)` for code snippets, `highlightResponse(body, contentType)` for response bodies. Theme: `dark-plus`.
 
 ### Commands
 Commands are prefixed with `endpoint.` and registered in `extension.ts`.
