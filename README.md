@@ -128,7 +128,7 @@ Content-Type: application/json
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `endpoint.logLevel` | `info` | Logging: `off`, `error`, `warn`, `info`, `debug`, `trace` |
-| `endpoint.timeout` | `30000` | Request timeout in milliseconds (0 = no timeout) |
+| `endpoint.timeout` | `30000` | Request timeout in milliseconds (0 for no timeout) |
 | `endpoint.followRedirects` | `true` | Follow HTTP redirects |
 | `endpoint.maxRedirects` | `10` | Maximum number of redirects to follow (0-50) |
 | `endpoint.rejectUnauthorized` | `true` | Reject unauthorized SSL certificates |
