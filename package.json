@@ -22,9 +22,22 @@
     "vscode": "^1.108.1"
   },
   "categories": [
+    "Programming Languages",
+    "Debuggers",
     "Other"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "rest",
+    "api",
+    "http",
+    "rest client",
+    "api client",
+    "http client",
+    "api testing",
+    "web services",
+    "curl"
+  ],
+  "activationEvents": [ ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
