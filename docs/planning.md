@@ -1,8 +1,10 @@
 # Endpoint Extension - Feature Planning
 
-## Plan 1: Code Generation
+## Plan 1: Code Generation ✅ COMPLETE
 
 Enable "Copy as cURL/fetch/Python/etc." from any HTTP request.
+
+**Status**: Implemented with Code Snippet tab in response area, 6 language generators (curl, javascript-fetch, python-requests, csharp-httpclient, go-nethttp, php-curl), Shiki syntax highlighting with dual themes (github-light/dark), and variable resolution toggle.
 
 ### Overview
 
@@ -134,6 +136,6 @@ High (1-2 weeks)
 
 ## Next Steps
 
-1. Start with **Code Generation** (Plan 1) - high visibility feature
-2. Then **OAuth 2.0** (Plan 2) - addresses major auth gap
-3. Finally **gRPC** (Plan 3) - largest scope, can be phased
+1. ~~Start with **Code Generation** (Plan 1)~~ ✅ Complete
+2. **OAuth 2.0** (Plan 2) - addresses major auth gap
+3. **gRPC** (Plan 3) - largest scope, can be phased
