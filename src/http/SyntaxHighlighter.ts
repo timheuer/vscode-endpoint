@@ -1,3 +1,33 @@
+// Static imports for shiki - required for bundling (dynamic imports don't work in packaged extensions)
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import { createHighlighterCore } from 'shiki/core';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import themeDark from '@shikijs/themes/github-dark';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import themeLight from '@shikijs/themes/github-light';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langBash from '@shikijs/langs/bash';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langJavascript from '@shikijs/langs/javascript';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langPython from '@shikijs/langs/python';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langCsharp from '@shikijs/langs/csharp';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langGo from '@shikijs/langs/go';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langPhp from '@shikijs/langs/php';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langJson from '@shikijs/langs/json';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langXml from '@shikijs/langs/xml';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langHtml from '@shikijs/langs/html';
+// @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
+import langCss from '@shikijs/langs/css';
+
 // Language mapping for code generators
 const LANGUAGE_MAP: Record<string, string> = {
     'curl': 'bash',
@@ -8,9 +38,6 @@ const LANGUAGE_MAP: Record<string, string> = {
     'php-curl': 'php',
 };
 
-// Languages we need for code snippets and responses
-const REQUIRED_LANGS = ['bash', 'javascript', 'python', 'csharp', 'go', 'php', 'json', 'xml', 'html', 'css'];
-
 /**
  * Singleton service for syntax highlighting using Shiki
  * Uses JavaScript regex engine for VS Code extension compatibility
@@ -18,7 +45,7 @@ const REQUIRED_LANGS = ['bash', 'javascript', 'python', 'csharp', 'go', 'php', '
  */
 export class SyntaxHighlighter {
     private static instance: SyntaxHighlighter;
-    private highlighter: any = null; // Dynamic Shiki highlighter instance
+    private highlighter: any = null;
     private initPromise: Promise<void> | null = null;
 
     private constructor() { }
@@ -38,15 +65,9 @@ export class SyntaxHighlighter {
         if (this.initPromise) { return this.initPromise; }
 
         this.initPromise = (async () => {
-            const { createHighlighterCore } = await import('shiki/core');
-            const { createJavaScriptRegexEngine } = await import('shiki/engine/javascript');
-
             this.highlighter = await createHighlighterCore({
-                themes: [
-                    import('@shikijs/themes/github-dark'),
-                    import('@shikijs/themes/github-light'),
-                ],
-                langs: REQUIRED_LANGS.map(lang => import(`@shikijs/langs/${lang}`)),
+                themes: [themeDark, themeLight],
+                langs: [langBash, langJavascript, langPython, langCsharp, langGo, langPhp, langJson, langXml, langHtml, langCss],
                 engine: createJavaScriptRegexEngine(),
             });
         })();
