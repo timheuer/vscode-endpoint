@@ -128,6 +128,12 @@ Content-Type: application/json
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `endpoint.logLevel` | `info` | Logging: `off`, `error`, `warn`, `info`, `debug`, `trace` |
+| `endpoint.timeout` | `30000` | Request timeout in milliseconds (0 for no timeout) |
+| `endpoint.followRedirects` | `true` | Follow HTTP redirects |
+| `endpoint.maxRedirects` | `10` | Maximum number of redirects to follow (0-50) |
+| `endpoint.rejectUnauthorized` | `true` | Reject unauthorized SSL certificates |
+| `endpoint.historyLimit` | `20` | Maximum number of history items to retain (0-1000) |
+| `endpoint.defaultContentType` | `json` | Default body type: `json`, `form`, `xml`, `text`, `none` |
 
 ---
 
