@@ -1,4 +1,4 @@
-import { LanguageGenerator, ResolvedRequest } from '../types';
+import { LanguageGenerator, ResolvedRequest, VARIABLE_PATTERN } from '../types';
 
 export class PhpCurlGenerator implements LanguageGenerator {
     id = 'php-curl';
@@ -10,7 +10,7 @@ export class PhpCurlGenerator implements LanguageGenerator {
         lines.push('');
         lines.push('$ch = curl_init();');
         lines.push('');
-        lines.push(`curl_setopt($ch, CURLOPT_URL, '${this.escapePhp(request.url)}');`);
+        lines.push(`curl_setopt($ch, CURLOPT_URL, ${this.formatString(request.url)});`);
         lines.push('curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);');
 
         // Set method
@@ -25,7 +25,7 @@ export class PhpCurlGenerator implements LanguageGenerator {
             lines.push('');
             lines.push('curl_setopt($ch, CURLOPT_HTTPHEADER, [');
             for (const header of request.headers) {
-                lines.push(`    '${this.escapePhp(header.name)}: ${this.escapePhp(header.value)}',`);
+                lines.push(`    ${this.formatString(`${header.name}: ${header.value}`)},`);
             }
             lines.push(']);');
         }
@@ -33,7 +33,7 @@ export class PhpCurlGenerator implements LanguageGenerator {
         // Set body
         if (request.body && request.body.content) {
             lines.push('');
-            lines.push(`curl_setopt($ch, CURLOPT_POSTFIELDS, '${this.escapePhp(request.body.content)}');`);
+            lines.push(`curl_setopt($ch, CURLOPT_POSTFIELDS, ${this.formatString(request.body.content)});`);
         }
 
         lines.push('');
@@ -48,6 +48,44 @@ export class PhpCurlGenerator implements LanguageGenerator {
         lines.push('curl_close($ch);');
 
         return lines.join('\n');
+    }
+
+    /**
+     * Format a string, using string concatenation with getenv() for {{VAR}} patterns.
+     */
+    private formatString(str: string): string {
+        const hasVars = VARIABLE_PATTERN.test(str);
+        VARIABLE_PATTERN.lastIndex = 0;
+
+        if (hasVars) {
+            // Split the string into parts and concatenate with getenv() calls
+            const parts: string[] = [];
+            let lastIndex = 0;
+            const regex = new RegExp(VARIABLE_PATTERN.source, 'g');
+            let match;
+
+            while ((match = regex.exec(str)) !== null) {
+                // Add the text before this variable
+                if (match.index > lastIndex) {
+                    const text = str.slice(lastIndex, match.index);
+                    parts.push(`'${this.escapePhp(text)}'`);
+                }
+                // Add the getenv() call
+                const varName = match[1].trim();
+                parts.push(`getenv('${varName}')`);
+                lastIndex = match.index + match[0].length;
+            }
+
+            // Add any remaining text after the last variable
+            if (lastIndex < str.length) {
+                const text = str.slice(lastIndex);
+                parts.push(`'${this.escapePhp(text)}'`);
+            }
+
+            return parts.join(' . ');
+        } else {
+            return `'${this.escapePhp(str)}'`;
+        }
     }
 
     private escapePhp(str: string): string {

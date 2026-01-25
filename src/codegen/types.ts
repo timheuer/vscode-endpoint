@@ -32,3 +32,28 @@ export interface LanguageGenerator {
     /** Generate code snippet from a resolved request */
     generate(request: ResolvedRequest): string;
 }
+
+/**
+ * Regex pattern to detect {{VARIABLE}} syntax
+ */
+export const VARIABLE_PATTERN = /\{\{([^}]+)\}\}/g;
+
+/**
+ * Check if a string contains unresolved variables
+ */
+export function hasVariables(text: string): boolean {
+    return VARIABLE_PATTERN.test(text);
+}
+
+/**
+ * Extract variable names from a string
+ */
+export function extractVariables(text: string): string[] {
+    const vars: string[] = [];
+    const regex = new RegExp(VARIABLE_PATTERN.source, 'g');
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        vars.push(match[1].trim());
+    }
+    return vars;
+}
