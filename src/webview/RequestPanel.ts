@@ -10,6 +10,7 @@ import { VariableService } from '../storage/VariableService';
 import { ResponseStorage } from '../storage/ResponseStorage';
 import { getGenerator } from '../codegen';
 import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
+import { DirtyStateProvider } from '../providers/DirtyStateProvider';
 
 export class RequestPanel {
     public static currentPanel: RequestPanel | undefined;
@@ -25,6 +26,9 @@ export class RequestPanel {
     private _requestId: string | undefined;
     private _collectionId: string | undefined;
     private _lastResponse: HttpResponse | undefined;
+    private _isDirty: boolean = false;
+    private _originalDataHash: string = '';
+    private _baseName: string = '';
 
     /**
      * Initialize the RequestPanel with required services
@@ -50,11 +54,18 @@ export class RequestPanel {
         this._requestId = requestData.id;
         this._collectionId = collectionId;
 
+        // Initialize dirty state tracking
+        this._baseName = requestData.name || 'New Request';
+        this._originalDataHash = this._computeDataHash(requestData);
+        this._isDirty = false;
+
         // Set the webview's initial html content
         this._update();
 
-        // Listen for when the panel is disposed
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+        // Listen for when the panel is disposed - prompt to save if dirty
+        this._panel.onDidDispose(async () => {
+            await this._handlePanelClose();
+        }, null, this._disposables);
 
         // Handle messages from the webview
         this._panel.webview.onDidReceiveMessage(
@@ -186,8 +197,80 @@ export class RequestPanel {
     public loadRequest(requestData: RequestData): void {
         this._requestData = requestData;
         this._requestId = requestData.id;
-        this._panel.title = requestData.name || 'New Request';
+        this._baseName = requestData.name || 'New Request';
+        this._originalDataHash = this._computeDataHash(requestData);
+        this._clearDirty();
+        this._panel.title = this._baseName;
         this._panel.webview.postMessage({ type: 'loadRequest', data: requestData });
+    }
+
+    /**
+     * Compute a hash of request data for change detection
+     */
+    private _computeDataHash(data: RequestData): string {
+        // Create a normalized representation for comparison
+        const normalized = {
+            name: data.name,
+            method: data.method,
+            url: data.url,
+            queryParams: data.queryParams,
+            headers: data.headers,
+            auth: data.auth,
+            body: data.body,
+            inheritedHeadersState: data.inheritedHeadersState,
+            useInheritedAuth: data.useInheritedAuth
+        };
+        return JSON.stringify(normalized);
+    }
+
+    /**
+     * Mark the request as dirty (has unsaved changes)
+     */
+    private _setDirty(): void {
+        if (!this._isDirty) {
+            this._isDirty = true;
+            this._panel.title = `\u25cf ${this._baseName}`;
+
+            // Update global dirty state tracker
+            if (this._requestId) {
+                DirtyStateProvider.getInstance().setDirty(this._requestId, true);
+                vscode.commands.executeCommand('endpoint.refreshCollections');
+            }
+
+            // Notify webview of dirty state
+            this._panel.webview.postMessage({ type: 'dirtyStateChanged', isDirty: true });
+        }
+    }
+
+    /**
+     * Clear dirty state (e.g., after save)
+     */
+    private _clearDirty(): void {
+        if (this._isDirty) {
+            this._isDirty = false;
+            this._panel.title = this._baseName;
+
+            // Update global dirty state tracker
+            if (this._requestId) {
+                DirtyStateProvider.getInstance().setDirty(this._requestId, false);
+                vscode.commands.executeCommand('endpoint.refreshCollections');
+            }
+
+            // Notify webview of dirty state
+            this._panel.webview.postMessage({ type: 'dirtyStateChanged', isDirty: false });
+        }
+    }
+
+    /**
+     * Check if current data differs from original
+     */
+    private _checkDirty(data: RequestData): void {
+        const currentHash = this._computeDataHash(data);
+        if (currentHash !== this._originalDataHash) {
+            this._setDirty();
+        } else {
+            this._clearDirty();
+        }
     }
 
     private _handleMessage(message: any): void {
@@ -200,6 +283,11 @@ export class RequestPanel {
                 break;
             case 'updateRequest':
                 this._requestData = message.data;
+                break;
+            case 'contentChanged':
+                // Webview notifies us of content changes for dirty tracking
+                this._requestData = message.data;
+                this._checkDirty(message.data);
                 break;
             case 'openInEditor':
                 this._openResponseInEditor();
@@ -653,9 +741,12 @@ export class RequestPanel {
                     collection.updatedAt = Date.now();
                     await RequestPanel._storageService.saveCollection(collection);
 
-                    // Update panel title
+                    // Update panel state and clear dirty
+                    this._baseName = data.name;
                     this._panel.title = data.name;
                     this._requestData = data;
+                    this._originalDataHash = this._computeDataHash(data);
+                    this._clearDirty();
 
                     vscode.commands.executeCommand('endpoint.refreshCollections');
                     vscode.window.showInformationMessage(`Request "${data.name}" saved.`);
@@ -714,12 +805,15 @@ export class RequestPanel {
             selected.collection.updatedAt = Date.now();
             await RequestPanel._storageService.saveCollection(selected.collection);
 
-            // Update panel state
+            // Update panel state and clear dirty
             this._requestId = newRequest.id;
             this._collectionId = selected.collection.id;
             data.id = newRequest.id;
             this._requestData = data;
-            this._panel.title = data.name || 'New Request';
+            this._baseName = data.name || 'New Request';
+            this._panel.title = this._baseName;
+            this._originalDataHash = this._computeDataHash(data);
+            this._clearDirty();
 
             // Register this panel with the new request ID
             RequestPanel.panels.set(newRequest.id, this);
@@ -740,8 +834,44 @@ export class RequestPanel {
         );
     }
 
-    public dispose(): void {
-        // Remove from panels map
+    /**
+     * Handle panel close - prompt to save if dirty
+     */
+    private async _handlePanelClose(): Promise<void> {
+        if (this._isDirty && this._requestId) {
+            const result = await vscode.window.showWarningMessage(
+                `Do you want to save changes to "${this._baseName}"?`,
+                { modal: true },
+                'Save',
+                "Don't Save"
+            );
+
+            if (result === 'Save') {
+                await this._saveRequest(this._requestData);
+                this._cleanup();
+            } else if (result === "Don't Save") {
+                this._cleanup();
+            } else {
+                // Cancel (built-in button or Escape) - re-open the panel with current dirty state
+                this._reopenWithDirtyState();
+            }
+        } else {
+            this._cleanup();
+        }
+    }
+
+    /**
+     * Re-open the panel preserving dirty state (when user cancels close)
+     */
+    private _reopenWithDirtyState(): void {
+        // Store what we need before cleanup removes it from the map
+        const requestData = { ...this._requestData };
+        const collectionId = this._collectionId;
+        const extensionUri = this._extensionUri;
+        const originalHash = this._originalDataHash;
+        const baseName = this._baseName;
+
+        // Clean up the old panel tracking (but panel is already disposed)
         if (this._requestId) {
             RequestPanel.panels.delete(this._requestId);
         }
@@ -749,14 +879,48 @@ export class RequestPanel {
             RequestPanel.currentPanel = undefined;
         }
 
-        // Clean up resources
-        this._panel.dispose();
-
+        // Clean up disposables
         while (this._disposables.length) {
             const disposable = this._disposables.pop();
             if (disposable) {
                 disposable.dispose();
             }
         }
+
+        // Re-create panel with the dirty data
+        const newPanel = RequestPanel.createOrShow(extensionUri, requestData, collectionId);
+
+        // Restore dirty state on the new panel
+        newPanel._originalDataHash = originalHash;
+        newPanel._baseName = baseName;
+        newPanel._setDirty();
+    }
+
+    /**
+     * Clean up resources (called after panel is disposed)
+     */
+    private _cleanup(): void {
+        // Remove from panels map
+        if (this._requestId) {
+            RequestPanel.panels.delete(this._requestId);
+            // Clear dirty state when panel is closed
+            DirtyStateProvider.getInstance().clearDirty(this._requestId);
+            vscode.commands.executeCommand('endpoint.refreshCollections');
+        }
+        if (RequestPanel.currentPanel === this) {
+            RequestPanel.currentPanel = undefined;
+        }
+
+        // Clean up disposables
+        while (this._disposables.length) {
+            const disposable = this._disposables.pop();
+            if (disposable) {
+                disposable.dispose();
+            }
+        }
+    }
+
+    public dispose(): void {
+        this._cleanup();
     }
 }

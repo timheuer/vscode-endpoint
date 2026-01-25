@@ -124,6 +124,25 @@ export function generateRequestPanelHtml(
             flex-shrink: 0;
         }
 
+        /* Dirty state indicator */
+        .dirty-indicator {
+            display: none;
+            margin-left: 8px;
+            color: var(--vscode-errorForeground, #f85149);
+            font-size: 12px;
+            font-weight: 500;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .dirty-indicator.visible {
+            display: flex;
+        }
+
+        .dirty-indicator .codicon {
+            font-size: 14px;
+        }
+
         /* Icon spacing inside buttons */
         vscode-button .codicon {
             margin-right: 6px;
@@ -739,6 +758,10 @@ export function generateRequestPanelHtml(
             <span class="codicon codicon-save"></span>
             Save
         </vscode-button>
+        <div id="dirtyIndicator" class="dirty-indicator">
+            <span class="codicon codicon-circle-filled"></span>
+            <span>Unsaved</span>
+        </div>
     </div>
 
     <vscode-tabs id="requestTabs" selected-index="0">
@@ -1078,6 +1101,9 @@ export function generateRequestPanelHtml(
             function saveState() {
                 const state = collectRequestData();
                 vscode.setState(state);
+                
+                // Notify extension of content change for dirty state tracking
+                vscode.postMessage({ type: 'contentChanged', data: state });
             }
 
             function collectRequestData() {
@@ -1571,7 +1597,12 @@ export function generateRequestPanelHtml(
                         inheritedAuth = message.data.inheritedAuth || null;
                         restoreState(requestData);
                         updateInheritedAuthVisibility(inheritedAuth);
-                        saveState();
+                        // Hide dirty indicator on fresh load
+                        const loadIndicator = document.getElementById('dirtyIndicator');
+                        if (loadIndicator) {
+                            loadIndicator.classList.remove('visible');
+                        }
+                        // Don't call saveState() here to avoid triggering dirty immediately
                         break;
                     case 'updateInheritedHeaders':
                         inheritedHeaders = message.data.inheritedHeaders || [];
@@ -1612,6 +1643,13 @@ export function generateRequestPanelHtml(
                         break;
                     case 'codeCopied':
                         // Notification handled by extension
+                        break;
+                    case 'dirtyStateChanged':
+                        // Update dirty indicator visibility
+                        const indicator = document.getElementById('dirtyIndicator');
+                        if (indicator) {
+                            indicator.classList.toggle('visible', message.isDirty);
+                        }
                         break;
                 }
             });

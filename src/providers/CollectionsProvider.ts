@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Collection, Request, createCollection, createRequest } from '../models/Collection';
 import { StorageService } from '../storage/StorageService';
+import { DirtyStateProvider } from './DirtyStateProvider';
 
 export type CollectionTreeItem = CollectionItem | RequestItem;
 
@@ -26,7 +27,14 @@ export class RequestItem extends vscode.TreeItem {
         this.contextValue = 'request';
         this.iconPath = this.getMethodIcon(request.method);
         this.tooltip = `${request.method} ${request.url}`;
-        this.description = request.method;
+
+        // Check if request has unsaved changes
+        const isDirty = DirtyStateProvider.getInstance().isDirty(request.id);
+        this.description = isDirty ? `${request.method} ●` : request.method;
+
+        // Set resourceUri for FileDecorationProvider
+        this.resourceUri = vscode.Uri.parse(`endpoint-request:/${request.id}`);
+
         this.command = {
             command: 'endpoint.openRequest',
             title: 'Open Request',

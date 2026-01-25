@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CollectionsProvider, CollectionItem, RequestItem } from './providers/CollectionsProvider';
 import { EnvironmentsProvider, EnvironmentItem, VariableItem } from './providers/EnvironmentsProvider';
 import { HistoryProvider, HistoryTreeItem } from './providers/HistoryProvider';
+import { DirtyStateProvider } from './providers/DirtyStateProvider';
 import { RequestPanel } from './webview/RequestPanel';
 import { CollectionSettingsPanel } from './webview/CollectionSettingsPanel';
 import { registerResponseContentProvider } from './http/ResponseContentProvider';
@@ -48,6 +49,12 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.registerTreeDataProvider('endpointEnvironments', environmentsProvider),
 		vscode.window.registerTreeDataProvider('endpointHistory', historyProvider)
 	);
+
+	// Register FileDecorationProvider for dirty state indicators
+	context.subscriptions.push(
+		vscode.window.registerFileDecorationProvider(DirtyStateProvider.getInstance())
+	);
+	logger.debug('Dirty state decoration provider registered');
 
 	// Collection commands
 	context.subscriptions.push(
