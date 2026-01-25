@@ -644,8 +644,15 @@ export class RequestPanel {
         });
 
         try {
-            // Execute the request using HttpClient
-            const response = await RequestPanel._httpClient.executeRequest(request);
+            // Execute the request using HttpClient with status bar progress
+            const displayName = data.name || `${data.method} request`;
+            const response = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Window,
+                    title: vscode.l10n.t('$(sync~spin) Sending {0}...', displayName)
+                },
+                async () => RequestPanel._httpClient!.executeRequest(request)
+            );
 
             // Update history item with response data
             historyItem.statusCode = response.status;
