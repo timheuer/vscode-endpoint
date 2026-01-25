@@ -124,6 +124,11 @@ export function generateRequestPanelHtml(
             flex-shrink: 0;
         }
 
+        /* Icon spacing inside buttons */
+        vscode-button .codicon {
+            margin-right: 6px;
+        }
+
         vscode-tabs {
             width: 100%;
         }
