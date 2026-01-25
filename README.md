@@ -4,6 +4,8 @@
 
 Test APIs without leaving your editor. Beautiful native GUI. Zero context switching.
 
+<img alt="vscode-endpoint" src="https://github.com/user-attachments/assets/3f439a97-397e-4b2d-9a4d-6bc48f15734c" />
+
 ---
 
 ## ✨ Why Endpoint?
