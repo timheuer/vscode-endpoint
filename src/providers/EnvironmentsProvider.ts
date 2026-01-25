@@ -195,28 +195,12 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
             return;
         }
 
-        const name = await vscode.window.showInputBox({
-            prompt: 'Enter variable name',
-            value: variable.name,
-            validateInput: (value) => {
-                if (!value || value.trim().length === 0) {
-                    return 'Variable name is required';
-                }
-                return null;
-            },
-        });
-
-        if (!name) {
-            return;
-        }
-
         const value = await vscode.window.showInputBox({
-            prompt: `Enter value for ${name}`,
+            prompt: `Enter value for ${variable.name}`,
             value: variable.value,
         });
 
         if (value !== undefined) {
-            variable.name = name.trim();
             variable.value = value;
             environment.updatedAt = Date.now();
             await this.storageService.saveEnvironment(environment);
