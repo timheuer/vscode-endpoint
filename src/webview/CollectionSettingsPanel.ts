@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getNonce, getVscodeElementsUri, getCodiconsUri } from './webviewUtils';
 import { Collection, RequestHeader, AuthConfig, AuthType } from '../models/Collection';
 import { StorageService } from '../storage/StorageService';
+import { VariableService } from '../storage/VariableService';
 
 export class CollectionSettingsPanel {
     private static panels: Map<string, CollectionSettingsPanel> = new Map();
@@ -70,6 +71,50 @@ export class CollectionSettingsPanel {
             case 'saveSettings':
                 await this._saveSettings(message.data);
                 break;
+            case 'getAvailableVariables':
+                this._getAvailableVariables();
+                break;
+        }
+    }
+
+    private async _getAvailableVariables(): Promise<void> {
+        // Built-in variable names
+        const builtinVariables = [
+            '$timestamp',
+            '$guid',
+            '$uuid',
+            '$date',
+            '$time',
+            '$randomint',
+            '$datetime',
+            '$timestamp_unix'
+        ];
+
+        // Convert to flat array format: { name: string, source: string }[]
+        const variables: { name: string; source: string }[] = builtinVariables.map(name => ({
+            name,
+            source: 'Built-in'
+        }));
+
+        try {
+            const variableService = new VariableService(this._storageService);
+            // Get variables preview from VariableService
+            const preview = await variableService.getVariablesPreview(this._collection.id);
+
+            // Add environment variables
+            for (const name of Object.keys(preview.environment)) {
+                variables.push({ name, source: 'Environment' });
+            }
+
+            // Add collection variables
+            for (const name of Object.keys(preview.collection)) {
+                variables.push({ name, source: 'Collection' });
+            }
+
+            this._panel.webview.postMessage({ type: 'variablesList', data: variables });
+        } catch (error) {
+            // Return just built-ins on error
+            this._panel.webview.postMessage({ type: 'variablesList', data: variables });
         }
     }
 
@@ -213,9 +258,65 @@ export class CollectionSettingsPanel {
             font-size: 12px;
             margin-bottom: 12px;
         }
+        /* Autocomplete dropdown styles */
+        .autocomplete-dropdown {
+            position: fixed;
+            z-index: 10000;
+            min-width: 250px;
+            max-width: 400px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+            border: 1px solid var(--vscode-editorWidget-border, var(--vscode-widget-border));
+            border-radius: 4px;
+            box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+            display: none;
+        }
+        .autocomplete-dropdown.visible {
+            display: block;
+        }
+        .autocomplete-item {
+            display: flex;
+            flex-direction: column;
+            padding: 6px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background-color: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
+        }
+        .autocomplete-item.selected {
+            background-color: var(--vscode-list-activeSelectionBackground, #094771);
+            color: var(--vscode-list-activeSelectionForeground, #ffffff);
+        }
+        .autocomplete-item-name {
+            font-family: var(--vscode-editor-font-family, monospace);
+            font-size: var(--vscode-editor-font-size, 13px);
+            font-weight: 500;
+        }
+        .autocomplete-item-source {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 2px;
+        }
+        .autocomplete-item.selected .autocomplete-item-source {
+            color: var(--vscode-list-activeSelectionForeground, #ffffff);
+            opacity: 0.8;
+        }
+        .autocomplete-no-results {
+            padding: 8px 10px;
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
+    <!-- Autocomplete dropdown -->
+    <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
     <h2>Collection Settings: ${escapeHtml(this._collection.name)}</h2>
     
     <div class="section">
@@ -319,6 +420,267 @@ export class CollectionSettingsPanel {
     <script nonce="${nonce}">
         (function() {
             const vscode = acquireVsCodeApi();
+            
+            // Autocomplete state
+            let availableVariables = [];
+            let autocompleteTarget = null;
+            let autocompleteStartPos = 0;
+            let selectedIndex = -1;
+            
+            // Request available variables
+            vscode.postMessage({ type: 'getAvailableVariables' });
+            
+            // Handle messages from extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.type === 'variablesList') {
+                    availableVariables = message.data || [];
+                }
+            });
+            
+            // Autocomplete selectors - fields that should have autocomplete
+            const autocompleteSelectors = [
+                '#authUsername',
+                '#authPassword',
+                '#authToken',
+                '#authApiKeyName',
+                '#authApiKeyValue',
+                '[data-field="value"]' // Header value inputs
+            ];
+            
+            function isAutocompleteField(element) {
+                if (!element) return false;
+                for (const selector of autocompleteSelectors) {
+                    if (element.matches && element.matches(selector)) return true;
+                    if (element.id && selector === '#' + element.id) return true;
+                    if (element.dataset && element.dataset.field === 'value') return true;
+                }
+                return false;
+            }
+            
+            function getInputElement(target) {
+                if (target.tagName === 'VSCODE-TEXTFIELD') {
+                    return target.shadowRoot?.querySelector('input') || target;
+                }
+                return target;
+            }
+            
+            function getCursorPosition(element) {
+                const input = getInputElement(element);
+                return input.selectionStart || 0;
+            }
+            
+            function setCursorPosition(element, pos) {
+                const input = getInputElement(element);
+                if (input.setSelectionRange) {
+                    input.setSelectionRange(pos, pos);
+                }
+            }
+            
+            function getValue(element) {
+                return element.value || '';
+            }
+            
+            function setValue(element, value) {
+                element.value = value;
+            }
+            
+            const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+            
+            function showAutocomplete(target, cursorPos) {
+                const value = getValue(target);
+                const textBeforeCursor = value.substring(0, cursorPos);
+                
+                const lastOpenBrace = textBeforeCursor.lastIndexOf('{{');
+                if (lastOpenBrace === -1) {
+                    hideAutocomplete();
+                    return;
+                }
+                
+                const textAfterBrace = textBeforeCursor.substring(lastOpenBrace + 2);
+                if (textAfterBrace.includes('}}')) {
+                    hideAutocomplete();
+                    return;
+                }
+                
+                const partialName = textAfterBrace.toLowerCase();
+                const filtered = availableVariables.filter(v => 
+                    v.name.toLowerCase().includes(partialName)
+                );
+                
+                if (filtered.length === 0) {
+                    renderAutocomplete([]);
+                    positionDropdown(target);
+                    autocompleteDropdown.classList.add('visible');
+                    autocompleteTarget = target;
+                    autocompleteStartPos = lastOpenBrace;
+                    selectedIndex = -1;
+                    return;
+                }
+                
+                renderAutocomplete(filtered);
+                positionDropdown(target);
+                autocompleteDropdown.classList.add('visible');
+                autocompleteTarget = target;
+                autocompleteStartPos = lastOpenBrace;
+                selectedIndex = 0;
+                updateSelectedItem();
+            }
+            
+            function hideAutocomplete() {
+                autocompleteDropdown.classList.remove('visible');
+                autocompleteTarget = null;
+                selectedIndex = -1;
+            }
+            
+            function escapeHtmlInJs(text) {
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+            
+            function renderAutocomplete(variables) {
+                if (variables.length === 0) {
+                    autocompleteDropdown.innerHTML = '<div class="autocomplete-no-results">No matching variables</div>';
+                    return;
+                }
+                
+                autocompleteDropdown.innerHTML = variables.map((v, i) => \`
+                    <div class="autocomplete-item" data-index="\${i}" data-name="\${escapeHtmlInJs(v.name)}">
+                        <span class="autocomplete-item-name">\${escapeHtmlInJs(v.name)}</span>
+                        <span class="autocomplete-item-source">\${escapeHtmlInJs(v.source || 'Variable')}</span>
+                    </div>
+                \`).join('');
+                
+                autocompleteDropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const name = item.dataset.name;
+                        insertVariable(name);
+                    });
+                });
+            }
+            
+            function positionDropdown(target) {
+                const rect = target.getBoundingClientRect();
+                autocompleteDropdown.style.left = rect.left + 'px';
+                autocompleteDropdown.style.top = (rect.bottom + 2) + 'px';
+                autocompleteDropdown.style.minWidth = Math.min(rect.width, 250) + 'px';
+            }
+            
+            function updateSelectedItem() {
+                const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+                items.forEach((item, i) => {
+                    item.classList.toggle('selected', i === selectedIndex);
+                });
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    items[selectedIndex].scrollIntoView({ block: 'nearest' });
+                }
+            }
+            
+            function insertVariable(name) {
+                if (!autocompleteTarget) return;
+                
+                const value = getValue(autocompleteTarget);
+                const beforeBrace = value.substring(0, autocompleteStartPos);
+                const cursorPos = getCursorPosition(autocompleteTarget);
+                const afterCursor = value.substring(cursorPos);
+                
+                const newValue = beforeBrace + '{{' + name + '}}' + afterCursor;
+                setValue(autocompleteTarget, newValue);
+                
+                const newCursorPos = autocompleteStartPos + name.length + 4;
+                setTimeout(() => {
+                    autocompleteTarget.focus();
+                    setCursorPosition(autocompleteTarget, newCursorPos);
+                }, 0);
+                
+                hideAutocomplete();
+            }
+            
+            // Listen for input events on document
+            document.addEventListener('input', (e) => {
+                const target = e.target;
+                if (!isAutocompleteField(target)) return;
+                
+                const cursorPos = getCursorPosition(target);
+                const value = getValue(target);
+                const textBeforeCursor = value.substring(0, cursorPos);
+                
+                if (textBeforeCursor.endsWith('{{') || 
+                    (autocompleteTarget === target && autocompleteDropdown.classList.contains('visible'))) {
+                    showAutocomplete(target, cursorPos);
+                } else {
+                    const lastOpen = textBeforeCursor.lastIndexOf('{{');
+                    if (lastOpen !== -1) {
+                        const afterOpen = textBeforeCursor.substring(lastOpen + 2);
+                        if (!afterOpen.includes('}}')) {
+                            showAutocomplete(target, cursorPos);
+                            return;
+                        }
+                    }
+                    hideAutocomplete();
+                }
+            });
+            
+            // Keyboard navigation for autocomplete
+            document.addEventListener('keydown', (e) => {
+                if (!autocompleteDropdown.classList.contains('visible')) return;
+                
+                const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+                const itemCount = items.length;
+                
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (itemCount > 0) {
+                            selectedIndex = (selectedIndex + 1) % itemCount;
+                            updateSelectedItem();
+                        }
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        if (itemCount > 0) {
+                            selectedIndex = selectedIndex <= 0 ? itemCount - 1 : selectedIndex - 1;
+                            updateSelectedItem();
+                        }
+                        break;
+                    case 'Enter':
+                        if (selectedIndex >= 0 && items[selectedIndex]) {
+                            e.preventDefault();
+                            const name = items[selectedIndex].dataset.name;
+                            insertVariable(name);
+                        }
+                        break;
+                    case 'Escape':
+                        e.preventDefault();
+                        hideAutocomplete();
+                        break;
+                    case 'Tab':
+                        if (selectedIndex >= 0 && items[selectedIndex]) {
+                            e.preventDefault();
+                            const name = items[selectedIndex].dataset.name;
+                            insertVariable(name);
+                        } else {
+                            hideAutocomplete();
+                        }
+                        break;
+                }
+            });
+            
+            // Close autocomplete when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!autocompleteDropdown.contains(e.target) && e.target !== autocompleteTarget) {
+                    hideAutocomplete();
+                }
+            });
+            
+            // Close autocomplete on scroll
+            document.addEventListener('scroll', () => {
+                hideAutocomplete();
+            }, true);
 
             function collectHeaderRows() {
                 const rows = [];

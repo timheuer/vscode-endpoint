@@ -1028,13 +1028,7 @@ export function generateRequestPanelHtml(
                                 <vscode-option value="php-curl">PHP (cURL)</vscode-option>
                             </vscode-single-select>
                         </div>
-                        <div class="code-snippet-select-group">
-                            <label>Variables</label>
-                            <vscode-single-select id="codeVariables">
-                                <vscode-option value="resolve">Resolve values</vscode-option>
-                                <vscode-option value="keep" selected>Keep placeholders</vscode-option>
-                            </vscode-single-select>
-                        </div>
+                        <vscode-checkbox id="codeResolveVariables">Resolve variable values</vscode-checkbox>
                         <vscode-button id="copyCodeBtn" appearance="secondary">
                             <span class="codicon codicon-copy"></span>
                             Copy
@@ -1400,9 +1394,19 @@ export function generateRequestPanelHtml(
                 const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
                 const authSection = document.getElementById('authSection');
                 const inheritedAuthPreview = document.getElementById('inheritedAuthPreview');
+                const inheritedAuthSection = document.getElementById('inheritedAuthSection');
+                
+                // Only disable auth section if:
+                // 1. The inherited auth section is visible (has valid inherited auth)
+                // 2. AND the "use inherited auth" checkbox is checked
+                const hasValidInheritedAuth = inheritedAuthSection && 
+                    inheritedAuthSection.style.display !== 'none' &&
+                    inheritedAuth && 
+                    inheritedAuth.type && 
+                    inheritedAuth.type !== 'none';
                 
                 if (useInheritedAuthCheckbox && authSection) {
-                    const useInherited = useInheritedAuthCheckbox.checked;
+                    const useInherited = hasValidInheritedAuth && useInheritedAuthCheckbox.checked;
                     authSection.classList.toggle('disabled', useInherited);
                     if (inheritedAuthPreview) {
                         inheritedAuthPreview.classList.toggle('hidden', !useInherited);
@@ -1469,7 +1473,7 @@ export function generateRequestPanelHtml(
             function generateCodeSnippet() {
                 const data = collectRequestData();
                 const language = document.getElementById('codeLanguage').value;
-                const resolveVars = document.getElementById('codeVariables').value === 'resolve';
+                const resolveVars = document.getElementById('codeResolveVariables').checked;
                 vscode.postMessage({ 
                     type: 'generateCodeSnippet', 
                     data,
@@ -1479,7 +1483,7 @@ export function generateRequestPanelHtml(
             }
             
             document.getElementById('codeLanguage').addEventListener('change', generateCodeSnippet);
-            document.getElementById('codeVariables').addEventListener('change', generateCodeSnippet);
+            document.getElementById('codeResolveVariables').addEventListener('change', generateCodeSnippet);
             
             document.getElementById('copyCodeBtn').addEventListener('click', () => {
                 if (currentCodeSnippet) {
