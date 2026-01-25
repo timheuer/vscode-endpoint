@@ -1094,14 +1094,15 @@ export function generateRequestPanelHtml(
                 restoreInheritedHeadersState(state.inheritedHeaders || inheritedHeaders, state.inheritedHeadersState || inheritedHeadersState);
                 
                 // Restore auth
+                const authIdMap = { 'basic': 'authBasic', 'bearer': 'authBearer', 'apikey': 'authApiKey' };
                 if (state.auth) {
                     const authType = state.auth.type || 'none';
                     document.getElementById('authType').value = authType;
                     
                     // Update auth section visibility
                     document.querySelectorAll('.auth-fields').forEach(el => el.classList.remove('active'));
-                    if (authType !== 'none') {
-                        const authSection = document.getElementById('auth' + authType.charAt(0).toUpperCase() + authType.slice(1));
+                    if (authType !== 'none' && authIdMap[authType]) {
+                        const authSection = document.getElementById(authIdMap[authType]);
                         if (authSection) {
                             authSection.classList.add('active');
                         }
@@ -1266,11 +1267,12 @@ export function generateRequestPanelHtml(
             }
 
             // Auth type change handler
+            const authIdMapHandler = { 'basic': 'authBasic', 'bearer': 'authBearer', 'apikey': 'authApiKey' };
             document.getElementById('authType').addEventListener('change', (e) => {
                 const authType = e.target.value;
                 document.querySelectorAll('.auth-fields').forEach(el => el.classList.remove('active'));
-                if (authType !== 'none') {
-                    const authSection = document.getElementById('auth' + authType.charAt(0).toUpperCase() + authType.slice(1));
+                if (authType !== 'none' && authIdMapHandler[authType]) {
+                    const authSection = document.getElementById(authIdMapHandler[authType]);
                     if (authSection) {
                         authSection.classList.add('active');
                     }

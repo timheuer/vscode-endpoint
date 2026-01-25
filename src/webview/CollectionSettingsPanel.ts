@@ -354,11 +354,12 @@ export class CollectionSettingsPanel {
             }
 
             // Auth type change handler
+            const authIdMap = { 'basic': 'authBasic', 'bearer': 'authBearer', 'apikey': 'authApiKey' };
             document.getElementById('authType').addEventListener('change', (e) => {
                 const authType = e.target.value;
                 document.querySelectorAll('.auth-fields').forEach(el => el.classList.remove('active'));
-                if (authType !== 'none') {
-                    const authSection = document.getElementById('auth' + authType.charAt(0).toUpperCase() + authType.slice(1));
+                if (authType !== 'none' && authIdMap[authType]) {
+                    const authSection = document.getElementById(authIdMap[authType]);
                     if (authSection) {
                         authSection.classList.add('active');
                     }
