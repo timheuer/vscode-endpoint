@@ -13,7 +13,7 @@ export function getNonce(): string {
 }
 
 /**
- * Get a webview URI for a resource in node_modules or extension resources
+ * Get a webview URI for a resource in the extension
  */
 export function getWebviewUri(
     webview: vscode.Webview,
@@ -25,16 +25,15 @@ export function getWebviewUri(
 
 /**
  * Get the URI for vscode-elements resources
+ * Assets are copied to dist/webview during build
  */
 export function getVscodeElementsUri(
     webview: vscode.Webview,
     extensionUri: vscode.Uri
 ): { bundleUri: vscode.Uri } {
     const bundleUri = getWebviewUri(webview, extensionUri, [
-        'node_modules',
-        '@vscode-elements',
-        'elements',
         'dist',
+        'webview',
         'bundled.js'
     ]);
 
@@ -43,16 +42,15 @@ export function getVscodeElementsUri(
 
 /**
  * Get the URI for codicons
+ * Assets are copied to dist/webview during build
  */
 export function getCodiconsUri(
     webview: vscode.Webview,
     extensionUri: vscode.Uri
 ): vscode.Uri {
     return getWebviewUri(webview, extensionUri, [
-        'node_modules',
-        '@vscode',
-        'codicons',
         'dist',
+        'webview',
         'codicon.css'
     ]);
 }

@@ -55,9 +55,7 @@ export class CollectionSettingsPanel {
                 enableScripts: true,
                 retainContextWhenHidden: true,
                 localResourceRoots: [
-                    vscode.Uri.joinPath(extensionUri, 'node_modules'),
-                    vscode.Uri.joinPath(extensionUri, 'dist'),
-                    vscode.Uri.joinPath(extensionUri, 'src')
+                    vscode.Uri.joinPath(extensionUri, 'dist')
                 ]
             }
         );
