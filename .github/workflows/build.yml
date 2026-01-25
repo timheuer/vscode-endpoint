@@ -48,6 +48,12 @@ jobs:
             - name: 🗣️ NBGV outputs
               run: |
                   echo "SimpleVersion: ${{ steps.nbgv.outputs.SimpleVersion }}"
+                  echo "## Build Details" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+                  echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+                  echo "| Build Number | \`${{ steps.nbgv.outputs.SimpleVersion }}\` |" >> $GITHUB_STEP_SUMMARY
+                  echo "| Marketplace | [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=timheuer.vscode-endpoint) |" >> $GITHUB_STEP_SUMMARY
 
             - name: 📦 Package
               run: |
