@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Collection } from '../models/Collection';
 import { Environment, EnvironmentVariable } from '../models/Environment';
 import { HistoryItem } from '../models/HistoryItem';
+import { getSetting } from '../settings';
 
 const STORAGE_KEYS = {
     COLLECTIONS: 'endpoint.collections',
@@ -296,8 +297,6 @@ export class StorageService {
 
     // ==================== History ====================
 
-    private readonly maxHistoryItems = 100;
-
     /**
      * Get all history items from storage
      */
@@ -312,8 +311,9 @@ export class StorageService {
         const history = this.getHistory();
         history.unshift(item);
 
-        // Trim history if it exceeds max items
-        const trimmed = history.slice(0, this.maxHistoryItems);
+        // Trim history if it exceeds max items (from settings)
+        const historyLimit = getSetting('historyLimit');
+        const trimmed = history.slice(0, historyLimit);
         await this.context.globalState.update(STORAGE_KEYS.HISTORY, trimmed);
     }
 

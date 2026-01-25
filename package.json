@@ -444,6 +444,49 @@
             "All log levels"
           ],
           "description": "Controls the logging level for the Endpoint extension"
+        },
+        "endpoint.timeout": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 0,
+          "description": "Request timeout in milliseconds (0 for no timeout)"
+        },
+        "endpoint.followRedirects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to follow HTTP redirects"
+        },
+        "endpoint.maxRedirects": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Maximum number of redirects to follow"
+        },
+        "endpoint.rejectUnauthorized": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reject unauthorized SSL certificates"
+        },
+        "endpoint.historyLimit": {
+          "type": "number",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Maximum number of history items to retain"
+        },
+        "endpoint.defaultContentType": {
+          "type": "string",
+          "default": "json",
+          "enum": [ "json", "form", "xml", "text", "none" ],
+          "enumDescriptions": [
+            "application/json",
+            "application/x-www-form-urlencoded",
+            "application/xml",
+            "text/plain",
+            "No default content type"
+          ],
+          "description": "Default body content type for new requests"
         }
       }
     }

@@ -11,6 +11,7 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 - `src/models/` - TypeScript interfaces
 - `src/parser/` - .http file parsing/serialization
 - `src/providers/` - TreeDataProvider classes for sidebar views
+- `src/settings/` - VS Code configuration settings service
 - `src/storage/` - Persistence layer using ExtensionContext
 - `src/webview/` - Webview panels for request editing and collection settings
 
@@ -24,6 +25,7 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 7. **Request Chaining**: Use `ResponseStorage` singleton for session-scoped response storage. Supports `{{requestName.response.body.path}}` syntax via `VariableResolver`
 8. **Logging**: Use `@timheuer/vscode-ext-logger` via `src/logger.ts`. Import `getLogger()` to access the logger. Log level controlled via `endpoint.logLevel` setting with automatic config monitoring.
 9. **Environment Variable Security**: Environment variable VALUES are stored in VS Code's SecretStorage (encrypted), while metadata (names, enabled flags) is stored in globalState. Methods `getEnvironments()`, `getEnvironment()`, `getActiveEnvironment()` are async. Variable values are masked in the tree view UI.
+10. **Settings**: Use `getSettings()` or `getSetting(key)` from `src/settings` to access user-configurable options. Settings are read fresh on each call (no caching) so changes take effect on next request.
 
 ### Commands
 Commands are prefixed with `endpoint.` and registered in `extension.ts`.

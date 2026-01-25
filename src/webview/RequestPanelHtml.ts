@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { getNonce, getVscodeElementsUri, getCodiconsUri } from './webviewUtils';
 import { Request, HttpMethod, RequestBody, AuthConfig } from '../models/Collection';
+import { getSetting } from '../settings';
 
 export interface RequestData {
     id?: string;
@@ -17,6 +18,7 @@ export interface RequestData {
 }
 
 export function getDefaultRequestData(): RequestData {
+    const defaultContentType = getSetting('defaultContentType');
     return {
         name: 'New Request',
         method: 'GET',
@@ -24,7 +26,7 @@ export function getDefaultRequestData(): RequestData {
         queryParams: [],
         headers: [],
         auth: { type: 'none' },
-        body: { type: 'none', content: '' }
+        body: { type: defaultContentType, content: '' }
     };
 }
 

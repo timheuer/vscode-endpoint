@@ -5,6 +5,7 @@ import { URL } from 'url';
 import { Request, RequestHeader } from '../models/Collection';
 import { HttpResponse } from './ResponseContentProvider';
 import { getLogger } from '../logger';
+import { getSettings } from '../settings';
 
 export interface HttpClientOptions {
     timeout?: number;
@@ -13,12 +14,18 @@ export interface HttpClientOptions {
     rejectUnauthorized?: boolean;
 }
 
-const DEFAULT_OPTIONS: Required<HttpClientOptions> = {
-    timeout: 30000,
-    followRedirects: true,
-    maxRedirects: 10,
-    rejectUnauthorized: true,
-};
+/**
+ * Get default options from VS Code settings
+ */
+function getDefaultOptions(): Required<HttpClientOptions> {
+    const settings = getSettings();
+    return {
+        timeout: settings.timeout,
+        followRedirects: settings.followRedirects,
+        maxRedirects: settings.maxRedirects,
+        rejectUnauthorized: settings.rejectUnauthorized,
+    };
+}
 
 /**
  * HTTP Client using Node.js native http/https modules
@@ -27,7 +34,7 @@ export class HttpClient {
     private options: Required<HttpClientOptions>;
 
     constructor(options: HttpClientOptions = {}) {
-        this.options = { ...DEFAULT_OPTIONS, ...options };
+        this.options = { ...getDefaultOptions(), ...options };
     }
 
     /**
