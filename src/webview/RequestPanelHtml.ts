@@ -385,8 +385,8 @@ export function generateRequestPanelHtml(
         .headers-table {
             width: 100%;
             border-collapse: collapse;
-            font-family: var(--vscode-editor-font-family, monospace);
-            font-size: var(--vscode-editor-font-size, 13px);
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
         }
 
         .headers-table th {
@@ -415,8 +415,8 @@ export function generateRequestPanelHtml(
         .cookies-table {
             width: 100%;
             border-collapse: collapse;
-            font-family: var(--vscode-editor-font-family, monospace);
-            font-size: var(--vscode-editor-font-size, 13px);
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
         }
 
         .cookies-table th {
