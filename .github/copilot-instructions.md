@@ -17,7 +17,7 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 - `src/webview/` - Webview panels for request editing and collection settings
 
 ### Key Patterns
-1. **Storage**: Use `StorageService` for all persistence (globalState for data, secrets for sensitive values)
+1. **Storage**: Use `StorageService` for all persistence (globalState for data, secrets for sensitive values). Settings Sync enabled for `endpoint.collections` and `endpoint.environments` keys via `setKeysForSync()` in activation. Collections (including all requests, headers, auth) and environment metadata (names, variable names, enabled flags) sync across machines. Environment variable values stored in SecretStorage sync automatically. Active environment ID and history are NOT synced (machine-specific).
 2. **Variables**: Use `VariableService` for variable resolution with precedence: Request > Environment > Collection > Built-in
 3. **HTTP Execution**: Use native Node.js `http`/`https` modules via `HttpClient`
 4. **Response Display**: Virtual documents with `endpoint-response:` URI scheme

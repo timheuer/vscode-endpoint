@@ -23,6 +23,16 @@ export function activate(context: vscode.ExtensionContext) {
 	const variableService = new VariableService(storageService);
 	logger.debug('Storage and variable services initialized');
 
+	// Enable Settings Sync for collections and environments
+	// Collections: all data (requests, headers, auth, etc.) will sync
+	// Environments: names and variable metadata will sync (values are in SecretStorage which VS Code syncs automatically)
+	// Active environment ID and history are intentionally excluded (machine-specific)
+	context.globalState.setKeysForSync([
+		'endpoint.collections',
+		'endpoint.environments'
+	]);
+	logger.debug('Settings Sync enabled for collections and environments');
+
 	// Initialize RequestPanel with services
 	RequestPanel.initialize(storageService, variableService);
 
