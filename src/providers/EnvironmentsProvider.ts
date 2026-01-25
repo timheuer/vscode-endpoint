@@ -14,8 +14,8 @@ export class EnvironmentItem extends vscode.TreeItem {
         this.iconPath = new vscode.ThemeIcon(
             environment.isActive ? 'check' : 'symbol-namespace'
         );
-        this.tooltip = environment.isActive ? `${environment.name} (Active)` : environment.name;
-        this.description = environment.isActive ? 'Active' : `${environment.variables.length} variables`;
+        this.tooltip = environment.isActive ? vscode.l10n.t('{0} (Active)', environment.name) : environment.name;
+        this.description = environment.isActive ? vscode.l10n.t('Active') : vscode.l10n.t('{0} variables', environment.variables.length);
     }
 }
 
@@ -79,11 +79,11 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
     // CRUD Operations for Environments
     async addEnvironment(): Promise<Environment | undefined> {
         const name = await vscode.window.showInputBox({
-            prompt: 'Enter environment name',
-            placeHolder: 'Development',
+            prompt: vscode.l10n.t('Enter environment name'),
+            placeHolder: vscode.l10n.t('Development'),
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Environment name is required';
+                    return vscode.l10n.t('Environment name is required');
                 }
                 return null;
             },
@@ -100,11 +100,11 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
 
     async editEnvironment(item: EnvironmentItem): Promise<void> {
         const newName = await vscode.window.showInputBox({
-            prompt: 'Enter new environment name',
+            prompt: vscode.l10n.t('Enter new environment name'),
             value: item.environment.name,
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Environment name is required';
+                    return vscode.l10n.t('Environment name is required');
                 }
                 return null;
             },
@@ -123,12 +123,12 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
 
     async deleteEnvironment(item: EnvironmentItem): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete environment "${item.environment.name}"?`,
+            vscode.l10n.t('Are you sure you want to delete environment "{0}"?', item.environment.name),
             { modal: true },
-            'Delete'
+            vscode.l10n.t('Delete')
         );
 
-        if (confirm === 'Delete') {
+        if (confirm === vscode.l10n.t('Delete')) {
             await this.storageService.deleteEnvironment(item.environment.id);
             this.refresh();
         }
@@ -145,17 +145,17 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
     async setActiveEnvironment(item: EnvironmentItem): Promise<void> {
         await this.storageService.setActiveEnvironmentId(item.environment.id);
         this.refresh();
-        vscode.window.showInformationMessage(`Environment "${item.environment.name}" is now active.`);
+        vscode.window.showInformationMessage(vscode.l10n.t('Environment "{0}" is now active.', item.environment.name));
     }
 
     // CRUD Operations for Variables
     async addVariable(envItem: EnvironmentItem): Promise<EnvironmentVariable | undefined> {
         const name = await vscode.window.showInputBox({
-            prompt: 'Enter variable name',
+            prompt: vscode.l10n.t('Enter variable name'),
             placeHolder: 'API_KEY',
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Variable name is required';
+                    return vscode.l10n.t('Variable name is required');
                 }
                 return null;
             },
@@ -166,8 +166,8 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
         }
 
         const value = await vscode.window.showInputBox({
-            prompt: `Enter value for ${name}`,
-            placeHolder: 'Value',
+            prompt: vscode.l10n.t('Enter value for {0}', name),
+            placeHolder: vscode.l10n.t('Value'),
         });
 
         if (value !== undefined) {
@@ -196,7 +196,7 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
         }
 
         const value = await vscode.window.showInputBox({
-            prompt: `Enter value for ${variable.name}`,
+            prompt: vscode.l10n.t('Enter value for {0}', variable.name),
             value: variable.value,
         });
 
@@ -210,12 +210,12 @@ export class EnvironmentsProvider implements vscode.TreeDataProvider<Environment
 
     async deleteVariable(item: VariableItem): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete variable "${item.variable.name}"?`,
+            vscode.l10n.t('Are you sure you want to delete variable "{0}"?', item.variable.name),
             { modal: true },
-            'Delete'
+            vscode.l10n.t('Delete')
         );
 
-        if (confirm === 'Delete') {
+        if (confirm === vscode.l10n.t('Delete')) {
             const environment = await this.storageService.getEnvironment(item.environmentId);
             if (environment) {
                 environment.variables = environment.variables.filter(

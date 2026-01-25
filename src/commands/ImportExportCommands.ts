@@ -19,7 +19,7 @@ export async function importHttpFile(
             'HTTP Files': ['http', 'rest'],
             'All Files': ['*']
         },
-        title: 'Import HTTP File'
+        title: vscode.l10n.t('Import HTTP File')
     });
 
     if (!fileUris || fileUris.length === 0) {
@@ -37,7 +37,7 @@ export async function importHttpFile(
         const parsed = parseHttpFile(content);
 
         if (parsed.requests.length === 0) {
-            vscode.window.showWarningMessage('No requests found in the file.');
+            vscode.window.showWarningMessage(vscode.l10n.t('No requests found in the file.'));
             return;
         }
 
@@ -47,11 +47,11 @@ export async function importHttpFile(
 
         // Prompt for collection name
         const collectionName = await vscode.window.showInputBox({
-            prompt: 'Enter name for the new collection',
+            prompt: vscode.l10n.t('Enter name for the new collection'),
             value: baseName,
             validateInput: (value) => {
                 if (!value || value.trim() === '') {
-                    return 'Collection name is required';
+                    return vscode.l10n.t('Collection name is required');
                 }
                 return undefined;
             }
@@ -79,7 +79,7 @@ export async function importHttpFile(
         await storageService.saveCollection(collection);
 
         vscode.window.showInformationMessage(
-            `Imported ${collection.requests.length} request(s) into collection "${collectionName}"`
+            vscode.l10n.t('Imported {0} request(s) into collection "{1}"', collection.requests.length, collectionName)
         );
 
         // Refresh collections view
@@ -87,7 +87,7 @@ export async function importHttpFile(
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        vscode.window.showErrorMessage(`Failed to import HTTP file: ${message}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('Failed to import HTTP file: {0}', message));
     }
 }
 
@@ -100,12 +100,12 @@ export async function exportCollectionToHttpFile(
 ): Promise<void> {
     const collection = storageService.getCollection(collectionId);
     if (!collection) {
-        vscode.window.showErrorMessage('Collection not found.');
+        vscode.window.showErrorMessage(vscode.l10n.t('Collection not found.'));
         return;
     }
 
     if (collection.requests.length === 0) {
-        vscode.window.showWarningMessage('Collection has no requests to export.');
+        vscode.window.showWarningMessage(vscode.l10n.t('Collection has no requests to export.'));
         return;
     }
 
@@ -116,7 +116,7 @@ export async function exportCollectionToHttpFile(
             'HTTP Files': ['http'],
             'REST Files': ['rest']
         },
-        title: 'Export Collection'
+        title: vscode.l10n.t('Export Collection')
     });
 
     if (!saveUri) {
@@ -131,12 +131,12 @@ export async function exportCollectionToHttpFile(
         await vscode.workspace.fs.writeFile(saveUri, Buffer.from(content, 'utf-8'));
 
         vscode.window.showInformationMessage(
-            `Exported ${collection.requests.length} request(s) to ${saveUri.fsPath}`
+            vscode.l10n.t('Exported {0} request(s) to {1}', collection.requests.length, saveUri.fsPath)
         );
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        vscode.window.showErrorMessage(`Failed to export collection: ${message}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('Failed to export collection: {0}', message));
     }
 }
 
@@ -149,22 +149,22 @@ export async function exportAllCollectionsToHttpFile(
     const collections = storageService.getCollections();
 
     if (collections.length === 0) {
-        vscode.window.showWarningMessage('No collections to export.');
+        vscode.window.showWarningMessage(vscode.l10n.t('No collections to export.'));
         return;
     }
 
     // Let user select which collections to export
     const items = collections.map(c => ({
         label: c.name,
-        description: `${c.requests.length} request(s)`,
+        description: vscode.l10n.t('{0} request(s)', c.requests.length),
         picked: true,
         collection: c
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
         canPickMany: true,
-        placeHolder: 'Select collections to export',
-        title: 'Export Collections'
+        placeHolder: vscode.l10n.t('Select collections to export'),
+        title: vscode.l10n.t('Export Collections')
     });
 
     if (!selected || selected.length === 0) {
@@ -178,7 +178,7 @@ export async function exportAllCollectionsToHttpFile(
             'HTTP Files': ['http'],
             'REST Files': ['rest']
         },
-        title: 'Export Collections'
+        title: vscode.l10n.t('Export Collections')
     });
 
     if (!saveUri) {
@@ -226,12 +226,12 @@ export async function exportAllCollectionsToHttpFile(
         await vscode.workspace.fs.writeFile(saveUri, Buffer.from(lines.join('\n'), 'utf-8'));
 
         vscode.window.showInformationMessage(
-            `Exported ${totalRequests} request(s) from ${selected.length} collection(s) to ${saveUri.fsPath}`
+            vscode.l10n.t('Exported {0} request(s) from {1} collection(s) to {2}', totalRequests, selected.length, saveUri.fsPath)
         );
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        vscode.window.showErrorMessage(`Failed to export collections: ${message}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('Failed to export collections: {0}', message));
     }
 }
 
@@ -270,16 +270,16 @@ export function createImportExportCommands(
                 // If no collection ID provided, show picker
                 const collections = storageService.getCollections();
                 if (collections.length === 0) {
-                    vscode.window.showWarningMessage('No collections to export.');
+                    vscode.window.showWarningMessage(vscode.l10n.t('No collections to export.'));
                     return;
                 }
                 vscode.window.showQuickPick(
                     collections.map(c => ({
                         label: c.name,
-                        description: `${c.requests.length} request(s)`,
+                        description: vscode.l10n.t('{0} request(s)', c.requests.length),
                         collectionId: c.id
                     })),
-                    { placeHolder: 'Select a collection to export' }
+                    { placeHolder: vscode.l10n.t('Select a collection to export') }
                 ).then(selected => {
                     if (selected) {
                         exportCollectionToHttpFile(selected.collectionId, storageService);

@@ -157,8 +157,8 @@ export function activate(context: vscode.ExtensionContext) {
 			const collections = collectionsProvider.getCollections();
 			if (collections.length === 0) {
 				const create = await vscode.window.showInformationMessage(
-					'No collections found. Create one first?',
-					'Create Collection'
+					vscode.l10n.t('No collections found. Create one first?'),
+					vscode.l10n.t('Create Collection')
 				);
 				if (create) {
 					await collectionsProvider.addCollection();
@@ -169,18 +169,18 @@ export function activate(context: vscode.ExtensionContext) {
 			// Let user pick a collection
 			const items: { label: string; description: string; collection: Collection }[] = collections.map(c => ({
 				label: c.name,
-				description: `${c.requests.length} requests`,
+				description: vscode.l10n.t('{0} requests', c.requests.length),
 				collection: c
 			}));
 
 			const selected = await vscode.window.showQuickPick(items, {
-				placeHolder: 'Select a collection to save the request to'
+				placeHolder: vscode.l10n.t('Select a collection to save the request to')
 			});
 
 			if (selected) {
 				// Create a new request from history item
 				const name = await vscode.window.showInputBox({
-					prompt: 'Enter request name',
+					prompt: vscode.l10n.t('Enter request name'),
 					value: `${historyItem.method} ${new URL(historyItem.url).pathname}`,
 				});
 
@@ -199,7 +199,7 @@ export function activate(context: vscode.ExtensionContext) {
 					collection.requests.push(request);
 					collection.updatedAt = Date.now();
 					await collectionsProvider.updateCollection(collection);
-					vscode.window.showInformationMessage(`Request saved to "${collection.name}"`);
+					vscode.window.showInformationMessage(vscode.l10n.t('Request saved to "{0}"', collection.name));
 				}
 			}
 		})

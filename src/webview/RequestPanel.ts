@@ -495,12 +495,12 @@ export class RequestPanel {
 
     private async _copyToClipboard(text: string): Promise<void> {
         await vscode.env.clipboard.writeText(text);
-        vscode.window.showInformationMessage('Code copied to clipboard');
+        vscode.window.showInformationMessage(vscode.l10n.t('Code copied to clipboard'));
     }
 
     private async _openResponseInEditor(): Promise<void> {
         if (!this._lastResponse) {
-            vscode.window.showWarningMessage('No response to open. Send a request first.');
+            vscode.window.showWarningMessage(vscode.l10n.t('No response to open. Send a request first.'));
             return;
         }
         const responseDisplay = ResponseDisplay.getInstance();
@@ -510,7 +510,7 @@ export class RequestPanel {
     private async _sendRequest(data: RequestData): Promise<void> {
         // Check if services are initialized
         if (!RequestPanel._httpClient || !RequestPanel._variableService || !RequestPanel._storageService) {
-            vscode.window.showErrorMessage('HTTP Client not initialized. Please reload the extension.');
+            vscode.window.showErrorMessage(vscode.l10n.t('HTTP Client not initialized. Please reload the extension.'));
             return;
         }
 
@@ -702,13 +702,13 @@ export class RequestPanel {
                 }
             });
 
-            vscode.window.showErrorMessage(`Request failed: ${errorMessage}`);
+            vscode.window.showErrorMessage(vscode.l10n.t('Request failed: {0}', errorMessage));
         }
     }
 
     private async _saveRequest(data: RequestData): Promise<void> {
         if (!RequestPanel._storageService) {
-            vscode.window.showErrorMessage('Storage not initialized. Please reload the extension.');
+            vscode.window.showErrorMessage(vscode.l10n.t('Storage not initialized. Please reload the extension.'));
             return;
         }
 
@@ -749,7 +749,7 @@ export class RequestPanel {
                     this._clearDirty();
 
                     vscode.commands.executeCommand('endpoint.refreshCollections');
-                    vscode.window.showInformationMessage(`Request "${data.name}" saved.`);
+                    vscode.window.showInformationMessage(vscode.l10n.t('Request "{0}" saved.', data.name));
                     return;
                 }
             }
@@ -759,8 +759,8 @@ export class RequestPanel {
         const collections = RequestPanel._storageService.getCollections();
         if (collections.length === 0) {
             const create = await vscode.window.showInformationMessage(
-                'No collections found. Create one first?',
-                'Create Collection'
+                vscode.l10n.t('No collections found. Create one first?'),
+                vscode.l10n.t('Create Collection')
             );
             if (create) {
                 vscode.commands.executeCommand('endpoint.addCollection');
@@ -771,12 +771,12 @@ export class RequestPanel {
         // Let user pick a collection
         const items = collections.map(c => ({
             label: c.name,
-            description: `${c.requests.length} requests`,
+            description: vscode.l10n.t('{0} requests', c.requests.length),
             collection: c
         }));
 
         const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: 'Select a collection to save the request to'
+            placeHolder: vscode.l10n.t('Select a collection to save the request to')
         });
 
         if (selected) {
@@ -822,7 +822,7 @@ export class RequestPanel {
             }
 
             vscode.commands.executeCommand('endpoint.refreshCollections');
-            vscode.window.showInformationMessage(`Request saved to "${selected.collection.name}".`);
+            vscode.window.showInformationMessage(vscode.l10n.t('Request saved to "{0}".', selected.collection.name));
         }
     }
 
@@ -840,16 +840,16 @@ export class RequestPanel {
     private async _handlePanelClose(): Promise<void> {
         if (this._isDirty && this._requestId) {
             const result = await vscode.window.showWarningMessage(
-                `Do you want to save changes to "${this._baseName}"?`,
+                vscode.l10n.t('Do you want to save changes to "{0}"?', this._baseName),
                 { modal: true },
-                'Save',
-                "Don't Save"
+                vscode.l10n.t('Save'),
+                vscode.l10n.t("Don't Save")
             );
 
-            if (result === 'Save') {
+            if (result === vscode.l10n.t('Save')) {
                 await this._saveRequest(this._requestData);
                 this._cleanup();
-            } else if (result === "Don't Save") {
+            } else if (result === vscode.l10n.t("Don't Save")) {
                 this._cleanup();
             } else {
                 // Cancel (built-in button or Escape) - re-open the panel with current dirty state

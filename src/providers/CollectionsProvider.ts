@@ -96,11 +96,11 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
     async addCollection(): Promise<Collection | undefined> {
         const name = await vscode.window.showInputBox({
-            prompt: 'Enter collection name',
-            placeHolder: 'My Collection',
+            prompt: vscode.l10n.t('Enter collection name'),
+            placeHolder: vscode.l10n.t('My Collection'),
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Collection name is required';
+                    return vscode.l10n.t('Collection name is required');
                 }
                 return null;
             },
@@ -117,11 +117,11 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
     async editCollection(item: CollectionItem): Promise<void> {
         const newName = await vscode.window.showInputBox({
-            prompt: 'Enter new collection name',
+            prompt: vscode.l10n.t('Enter new collection name'),
             value: item.collection.name,
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Collection name is required';
+                    return vscode.l10n.t('Collection name is required');
                 }
                 return null;
             },
@@ -140,12 +140,12 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
     async deleteCollection(item: CollectionItem): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete collection "${item.collection.name}"?`,
+            vscode.l10n.t('Are you sure you want to delete collection "{0}"?', item.collection.name),
             { modal: true },
-            'Delete'
+            vscode.l10n.t('Delete')
         );
 
-        if (confirm === 'Delete') {
+        if (confirm === vscode.l10n.t('Delete')) {
             await this.storageService.deleteCollection(item.collection.id);
             this.refresh();
         }
@@ -166,11 +166,11 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
     async addRequest(collectionItem: CollectionItem): Promise<Request | undefined> {
         const name = await vscode.window.showInputBox({
-            prompt: 'Enter request name',
-            placeHolder: 'New Request',
+            prompt: vscode.l10n.t('Enter request name'),
+            placeHolder: vscode.l10n.t('New Request'),
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Request name is required';
+                    return vscode.l10n.t('Request name is required');
                 }
                 return null;
             },
@@ -192,11 +192,11 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
     async editRequest(item: RequestItem): Promise<void> {
         const newName = await vscode.window.showInputBox({
-            prompt: 'Enter new request name',
+            prompt: vscode.l10n.t('Enter new request name'),
             value: item.request.name,
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'Request name is required';
+                    return vscode.l10n.t('Request name is required');
                 }
                 return null;
             },
@@ -219,12 +219,12 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
     async deleteRequest(item: RequestItem): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete request "${item.request.name}"?`,
+            vscode.l10n.t('Are you sure you want to delete request "{0}"?', item.request.name),
             { modal: true },
-            'Delete'
+            vscode.l10n.t('Delete')
         );
 
-        if (confirm === 'Delete') {
+        if (confirm === vscode.l10n.t('Delete')) {
             const collection = this.storageService.getCollection(item.collectionId);
             if (collection) {
                 collection.requests = collection.requests.filter((r) => r.id !== item.request.id);

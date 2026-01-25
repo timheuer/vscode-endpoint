@@ -1,7 +1,7 @@
 {
   "name": "vscode-endpoint",
-  "displayName": "Endpoint",
-  "description": "REST Client with UI",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "0.0.0-placeholder",
   "preview": true,
   "author": {
@@ -44,7 +44,7 @@
       "activitybar": [
         {
           "id": "endpoint",
-          "title": "Endpoint",
+          "title": "%viewsContainers.activitybar.endpoint.title%",
           "icon": "icon.png"
         }
       ]
@@ -53,17 +53,17 @@
       "endpoint": [
         {
           "id": "endpointCollections",
-          "name": "Collections",
+          "name": "%views.endpoint.collections.name%",
           "icon": "$(folder-library)"
         },
         {
           "id": "endpointEnvironments",
-          "name": "Environments",
+          "name": "%views.endpoint.environments.name%",
           "icon": "$(symbol-namespace)"
         },
         {
           "id": "endpointHistory",
-          "name": "History",
+          "name": "%views.endpoint.history.name%",
           "icon": "$(history)"
         }
       ]
@@ -71,185 +71,185 @@
     "commands": [
       {
         "command": "endpoint.refreshCollections",
-        "title": "Refresh Collections",
+        "title": "%commands.refreshCollections.title%",
         "icon": "$(refresh)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.addCollection",
-        "title": "Add Collection",
+        "title": "%commands.addCollection.title%",
         "icon": "$(add)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.editCollection",
-        "title": "Edit Collection",
+        "title": "%commands.editCollection.title%",
         "icon": "$(edit)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.deleteCollection",
-        "title": "Delete Collection",
+        "title": "%commands.deleteCollection.title%",
         "icon": "$(trash)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.duplicateCollection",
-        "title": "Duplicate Collection",
+        "title": "%commands.duplicateCollection.title%",
         "icon": "$(copy)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.collectionSettings",
-        "title": "Collection Settings",
+        "title": "%commands.collectionSettings.title%",
         "icon": "$(gear)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.addRequest",
-        "title": "Add Request",
+        "title": "%commands.addRequest.title%",
         "icon": "$(add)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.editRequest",
-        "title": "Edit Request",
+        "title": "%commands.editRequest.title%",
         "icon": "$(edit)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.deleteRequest",
-        "title": "Delete Request",
+        "title": "%commands.deleteRequest.title%",
         "icon": "$(trash)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.duplicateRequest",
-        "title": "Duplicate Request",
+        "title": "%commands.duplicateRequest.title%",
         "icon": "$(copy)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.openRequest",
-        "title": "Open Request",
+        "title": "%commands.openRequest.title%",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.refreshEnvironments",
-        "title": "Refresh Environments",
+        "title": "%commands.refreshEnvironments.title%",
         "icon": "$(refresh)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.addEnvironment",
-        "title": "Add Environment",
+        "title": "%commands.addEnvironment.title%",
         "icon": "$(add)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.editEnvironment",
-        "title": "Edit Environment",
+        "title": "%commands.editEnvironment.title%",
         "icon": "$(edit)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.deleteEnvironment",
-        "title": "Delete Environment",
+        "title": "%commands.deleteEnvironment.title%",
         "icon": "$(trash)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.duplicateEnvironment",
-        "title": "Duplicate Environment",
+        "title": "%commands.duplicateEnvironment.title%",
         "icon": "$(copy)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.setActiveEnvironment",
-        "title": "Set as Active",
+        "title": "%commands.setActiveEnvironment.title%",
         "icon": "$(check)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.addVariable",
-        "title": "Add Variable",
+        "title": "%commands.addVariable.title%",
         "icon": "$(add)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.editVariable",
-        "title": "Edit Variable",
+        "title": "%commands.editVariable.title%",
         "icon": "$(edit)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.deleteVariable",
-        "title": "Delete Variable",
+        "title": "%commands.deleteVariable.title%",
         "icon": "$(trash)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.toggleVariable",
-        "title": "Toggle Variable",
+        "title": "%commands.toggleVariable.title%",
         "icon": "$(circle-slash)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.refreshHistory",
-        "title": "Refresh History",
+        "title": "%commands.refreshHistory.title%",
         "icon": "$(refresh)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.clearHistory",
-        "title": "Clear History",
+        "title": "%commands.clearHistory.title%",
         "icon": "$(clear-all)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.deleteHistoryItem",
-        "title": "Delete History Item",
+        "title": "%commands.deleteHistoryItem.title%",
         "icon": "$(trash)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.openHistoryItem",
-        "title": "Open History Item",
+        "title": "%commands.openHistoryItem.title%",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.saveHistoryToCollection",
-        "title": "Save to Collection",
+        "title": "%commands.saveHistoryToCollection.title%",
         "icon": "$(save)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.newRequest",
-        "title": "New Request",
+        "title": "%commands.newRequest.title%",
         "icon": "$(add)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.import",
-        "title": "Import HTTP File",
+        "title": "%commands.import.title%",
         "icon": "$(cloud-download)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.export",
-        "title": "Export All Collections",
+        "title": "%commands.export.title%",
         "icon": "$(cloud-upload)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.exportCollection",
-        "title": "Export Collection",
+        "title": "%commands.exportCollection.title%",
         "icon": "$(export)",
         "category": "Endpoint"
       },
       {
         "command": "endpoint.copyAsCode",
-        "title": "Copy as Code",
+        "title": "%commands.copyAsCode.title%",
         "icon": "$(code)",
         "category": "Endpoint"
       }
@@ -453,7 +453,7 @@
       }
     ],
     "configuration": {
-      "title": "Endpoint",
+      "title": "%configuration.title%",
       "properties": {
         "endpoint.logLevel": {
           "type": "string",
@@ -467,44 +467,44 @@
             "trace"
           ],
           "enumDescriptions": [
-            "No logging",
-            "Only errors",
-            "Errors and warnings",
-            "Errors, warnings, and info",
-            "All except trace",
-            "All log levels"
+            "%configuration.logLevel.enum.off%",
+            "%configuration.logLevel.enum.error%",
+            "%configuration.logLevel.enum.warn%",
+            "%configuration.logLevel.enum.info%",
+            "%configuration.logLevel.enum.debug%",
+            "%configuration.logLevel.enum.trace%"
           ],
-          "description": "Controls the logging level for the Endpoint extension"
+          "description": "%configuration.logLevel.description%"
         },
         "endpoint.timeout": {
           "type": "number",
           "default": 30000,
           "minimum": 0,
-          "description": "Request timeout in milliseconds (0 for no timeout)"
+          "description": "%configuration.timeout.description%"
         },
         "endpoint.followRedirects": {
           "type": "boolean",
           "default": true,
-          "description": "Whether to follow HTTP redirects"
+          "description": "%configuration.followRedirects.description%"
         },
         "endpoint.maxRedirects": {
           "type": "number",
           "default": 10,
           "minimum": 0,
           "maximum": 50,
-          "description": "Maximum number of redirects to follow"
+          "description": "%configuration.maxRedirects.description%"
         },
         "endpoint.rejectUnauthorized": {
           "type": "boolean",
           "default": true,
-          "description": "Reject unauthorized SSL certificates"
+          "description": "%configuration.rejectUnauthorized.description%"
         },
         "endpoint.historyLimit": {
           "type": "number",
           "default": 20,
           "minimum": 0,
           "maximum": 1000,
-          "description": "Maximum number of history items to retain"
+          "description": "%configuration.historyLimit.description%"
         },
         "endpoint.defaultContentType": {
           "type": "string",
@@ -517,13 +517,13 @@
             "none"
           ],
           "enumDescriptions": [
-            "application/json",
-            "application/x-www-form-urlencoded",
-            "application/xml",
-            "text/plain",
-            "No default content type"
+            "%configuration.defaultContentType.enum.json%",
+            "%configuration.defaultContentType.enum.form%",
+            "%configuration.defaultContentType.enum.xml%",
+            "%configuration.defaultContentType.enum.text%",
+            "%configuration.defaultContentType.enum.none%"
           ],
-          "description": "Default body content type for new requests"
+          "description": "%configuration.defaultContentType.description%"
         }
       }
     }

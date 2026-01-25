@@ -58,13 +58,13 @@ export class HistoryTreeItem extends vscode.TreeItem {
         const diffDays = Math.floor(diffMs / 86400000);
 
         if (diffMins < 1) {
-            return 'Just now';
+            return vscode.l10n.t('Just now');
         } else if (diffMins < 60) {
-            return `${diffMins}m ago`;
+            return vscode.l10n.t('{0}m ago', diffMins);
         } else if (diffHours < 24) {
-            return `${diffHours}h ago`;
+            return vscode.l10n.t('{0}h ago', diffHours);
         } else if (diffDays < 7) {
-            return `${diffDays}d ago`;
+            return vscode.l10n.t('{0}d ago', diffDays);
         } else {
             return date.toLocaleDateString();
         }
@@ -123,12 +123,12 @@ export class HistoryProvider implements vscode.TreeDataProvider<HistoryTreeItem>
 
     async deleteHistoryItem(item: HistoryTreeItem): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete this history item?`,
+            vscode.l10n.t('Are you sure you want to delete this history item?'),
             { modal: true },
-            'Delete'
+            vscode.l10n.t('Delete')
         );
 
-        if (confirm === 'Delete') {
+        if (confirm === vscode.l10n.t('Delete')) {
             await this.storageService.deleteHistoryItem(item.historyItem.id);
             this.refresh();
         }
@@ -136,15 +136,15 @@ export class HistoryProvider implements vscode.TreeDataProvider<HistoryTreeItem>
 
     async clearHistory(): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            'Are you sure you want to clear all history?',
+            vscode.l10n.t('Are you sure you want to clear all history?'),
             { modal: true },
-            'Clear All'
+            vscode.l10n.t('Clear All')
         );
 
-        if (confirm === 'Clear All') {
+        if (confirm === vscode.l10n.t('Clear All')) {
             await this.storageService.clearHistory();
             this.refresh();
-            vscode.window.showInformationMessage('History cleared.');
+            vscode.window.showInformationMessage(vscode.l10n.t('History cleared.'));
         }
     }
 

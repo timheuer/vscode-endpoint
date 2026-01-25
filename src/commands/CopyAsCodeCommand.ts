@@ -157,7 +157,7 @@ export function createCopyAsCodeCommand(
         // Get available generators
         const generators = getGenerators();
         if (generators.length === 0) {
-            vscode.window.showWarningMessage('No code generators available.');
+            vscode.window.showWarningMessage(vscode.l10n.t('No code generators available.'));
             return;
         }
 
@@ -169,8 +169,8 @@ export function createCopyAsCodeCommand(
         }));
 
         const selectedLanguage = await vscode.window.showQuickPick(languageItems, {
-            placeHolder: 'Select language',
-            title: 'Copy as Code',
+            placeHolder: vscode.l10n.t('Select language'),
+            title: vscode.l10n.t('Copy as Code'),
         });
 
         if (!selectedLanguage) {
@@ -179,11 +179,11 @@ export function createCopyAsCodeCommand(
 
         // Ask whether to resolve variables
         const resolveChoice = await vscode.window.showQuickPick([
-            { label: 'Resolve variables', description: 'Replace {{variable}} with actual values', resolve: true },
-            { label: 'Keep placeholders', description: 'Keep {{variable}} syntax in generated code', resolve: false },
+            { label: vscode.l10n.t('Resolve variables'), description: vscode.l10n.t('Replace {{variable}} with actual values'), resolve: true },
+            { label: vscode.l10n.t('Keep placeholders'), description: vscode.l10n.t('Keep {{variable}} syntax in generated code'), resolve: false },
         ], {
-            placeHolder: 'How should variables be handled?',
-            title: 'Variable Resolution',
+            placeHolder: vscode.l10n.t('How should variables be handled?'),
+            title: vscode.l10n.t('Variable Resolution'),
         });
 
         if (!resolveChoice) {
@@ -206,12 +206,12 @@ export function createCopyAsCodeCommand(
             // Copy to clipboard
             await vscode.env.clipboard.writeText(code);
 
-            vscode.window.showInformationMessage(`Copied ${selectedLanguage.label} code to clipboard.`);
+            vscode.window.showInformationMessage(vscode.l10n.t('Copied {0} code to clipboard.', selectedLanguage.label));
             logger.info(`Generated ${selectedLanguage.label} code and copied to clipboard`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Failed to generate code: ${errorMessage}`);
-            vscode.window.showErrorMessage(`Failed to generate code: ${errorMessage}`);
+            vscode.window.showErrorMessage(vscode.l10n.t('Failed to generate code: {0}', errorMessage));
         }
     };
 }
@@ -239,7 +239,7 @@ export async function handleWebviewCopyAsCode(
     // Get available generators
     const generators = getGenerators();
     if (generators.length === 0) {
-        vscode.window.showWarningMessage('No code generators available.');
+        vscode.window.showWarningMessage(vscode.l10n.t('No code generators available.'));
         return;
     }
 
@@ -251,8 +251,8 @@ export async function handleWebviewCopyAsCode(
     }));
 
     const selectedLanguage = await vscode.window.showQuickPick(languageItems, {
-        placeHolder: 'Select language',
-        title: 'Copy as Code',
+        placeHolder: vscode.l10n.t('Select language'),
+        title: vscode.l10n.t('Copy as Code'),
     });
 
     if (!selectedLanguage) {
@@ -261,11 +261,11 @@ export async function handleWebviewCopyAsCode(
 
     // Ask whether to resolve variables
     const resolveChoice = await vscode.window.showQuickPick([
-        { label: 'Resolve variables', description: 'Replace {{variable}} with actual values', resolve: true },
-        { label: 'Keep placeholders', description: 'Keep {{variable}} syntax in generated code', resolve: false },
+        { label: vscode.l10n.t('Resolve variables'), description: vscode.l10n.t('Replace {{variable}} with actual values'), resolve: true },
+        { label: vscode.l10n.t('Keep placeholders'), description: vscode.l10n.t('Keep {{variable}} syntax in generated code'), resolve: false },
     ], {
-        placeHolder: 'How should variables be handled?',
-        title: 'Variable Resolution',
+        placeHolder: vscode.l10n.t('How should variables be handled?'),
+        title: vscode.l10n.t('Variable Resolution'),
     });
 
     if (!resolveChoice) {
@@ -387,11 +387,11 @@ export async function handleWebviewCopyAsCode(
         // Copy to clipboard
         await vscode.env.clipboard.writeText(code);
 
-        vscode.window.showInformationMessage(`Copied ${selectedLanguage.label} code to clipboard.`);
+        vscode.window.showInformationMessage(vscode.l10n.t('Copied {0} code to clipboard.', selectedLanguage.label));
         logger.info(`Generated ${selectedLanguage.label} code from webview and copied to clipboard`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(`Failed to generate code: ${errorMessage}`);
-        vscode.window.showErrorMessage(`Failed to generate code: ${errorMessage}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('Failed to generate code: {0}', errorMessage));
     }
 }

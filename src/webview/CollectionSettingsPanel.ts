@@ -124,7 +124,7 @@ export class CollectionSettingsPanel {
         this._collection.updatedAt = Date.now();
         await this._storageService.saveCollection(this._collection);
         vscode.commands.executeCommand('endpoint.refreshCollections');
-        vscode.window.showInformationMessage(`Collection settings saved for "${this._collection.name}"`);
+        vscode.window.showInformationMessage(vscode.l10n.t('Collection settings saved for "{0}"', this._collection.name));
     }
 
     private _update(): void {
