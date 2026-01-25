@@ -49,6 +49,27 @@ function copyWebviewAssets() {
 	} else {
 		console.warn('[assets] Warning: codicons dist not found at', codiconsDir);
 	}
+
+	// Copy shared webview CSS
+	const sharedCssSource = path.join(__dirname, 'src', 'webview', 'shared.css');
+	if (fs.existsSync(sharedCssSource)) {
+		fs.copyFileSync(sharedCssSource, path.join(webviewDir, 'shared.css'));
+		console.log('[assets] Copied shared.css');
+	}
+
+	// Copy requestView.css
+	const requestViewCssSource = path.join(__dirname, 'src', 'webview', 'requestView.css');
+	if (fs.existsSync(requestViewCssSource)) {
+		fs.copyFileSync(requestViewCssSource, path.join(webviewDir, 'requestView.css'));
+		console.log('[assets] Copied requestView.css');
+	}
+
+	// Copy collectionSettings.css
+	const collectionSettingsCssSource = path.join(__dirname, 'src', 'webview', 'collectionSettings.css');
+	if (fs.existsSync(collectionSettingsCssSource)) {
+		fs.copyFileSync(collectionSettingsCssSource, path.join(webviewDir, 'collectionSettings.css'));
+		console.log('[assets] Copied collectionSettings.css');
+	}
 }
 
 /**

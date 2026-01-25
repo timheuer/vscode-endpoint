@@ -1,0 +1,167 @@
+/* Collection Settings Panel Styles */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    padding: 16px;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-editor-background);
+}
+
+h2 {
+    margin-top: 0;
+    border-bottom: 1px solid var(--vscode-widget-border);
+    padding-bottom: 8px;
+}
+
+.section {
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-weight: 500;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+/* Auth Section */
+.auth-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-fields {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--vscode-widget-border);
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.auth-fields.active {
+    display: flex;
+}
+
+.auth-field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-field-row label {
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.auth-field-row vscode-textfield,
+.auth-field-row vscode-single-select {
+    flex: 1;
+}
+
+.secret-field-wrapper {
+    display: flex;
+    flex: 1;
+    gap: 4px;
+    align-items: center;
+}
+
+.secret-field-wrapper vscode-textfield {
+    flex: 1;
+}
+
+.secret-toggle-btn {
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.secret-toggle-btn:hover {
+    opacity: 1;
+}
+
+/* Button Row */
+.button-row {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--vscode-widget-border);
+}
+
+.info-text {
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+/* Autocomplete Dropdown Styles */
+.autocomplete-dropdown {
+    position: fixed;
+    z-index: 10000;
+    min-width: 250px;
+    max-width: 400px;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+    border: 1px solid var(--vscode-editorWidget-border, var(--vscode-widget-border));
+    border-radius: 4px;
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+    display: none;
+}
+
+.autocomplete-dropdown.visible {
+    display: block;
+}
+
+.autocomplete-item {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background-color: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
+}
+
+.autocomplete-item.selected {
+    background-color: var(--vscode-list-activeSelectionBackground, #094771);
+    color: var(--vscode-list-activeSelectionForeground, #ffffff);
+}
+
+.autocomplete-item-name {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: var(--vscode-editor-font-size, 13px);
+    font-weight: 500;
+}
+
+.autocomplete-item-source {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    margin-top: 2px;
+}
+
+.autocomplete-item.selected .autocomplete-item-source {
+    color: var(--vscode-list-activeSelectionForeground, #ffffff);
+    opacity: 0.8;
+}
+
+.autocomplete-no-results {
+    padding: 8px 10px;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}

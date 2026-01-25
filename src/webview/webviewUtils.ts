@@ -54,3 +54,48 @@ export function getCodiconsUri(
         'codicon.css'
     ]);
 }
+
+/**
+ * Get the URI for shared webview CSS
+ * Assets are copied to dist/webview during build
+ */
+export function getSharedCssUri(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): vscode.Uri {
+    return getWebviewUri(webview, extensionUri, [
+        'dist',
+        'webview',
+        'shared.css'
+    ]);
+}
+
+/**
+ * Get the URI for request view CSS
+ * Assets are copied to dist/webview during build
+ */
+export function getRequestViewCssUri(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): vscode.Uri {
+    return getWebviewUri(webview, extensionUri, [
+        'dist',
+        'webview',
+        'requestView.css'
+    ]);
+}
+
+/**
+ * Get the URI for collection settings CSS
+ * Assets are copied to dist/webview during build
+ */
+export function getCollectionSettingsCssUri(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): vscode.Uri {
+    return getWebviewUri(webview, extensionUri, [
+        'dist',
+        'webview',
+        'collectionSettings.css'
+    ]);
+}

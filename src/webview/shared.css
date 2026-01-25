@@ -1,0 +1,60 @@
+/* Shared styles for webview panels */
+
+/* Icon spacing inside buttons */
+vscode-button .codicon {
+    margin-right: 6px;
+}
+
+/* Common key-value table styles */
+.key-value-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.key-value-table th {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--vscode-widget-border);
+    font-weight: 500;
+}
+
+.key-value-table td {
+    padding: 4px 8px;
+    vertical-align: middle;
+}
+
+.key-value-row {
+    border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
+}
+
+.key-value-row:last-child {
+    border-bottom: none;
+}
+
+.checkbox-cell {
+    width: 32px;
+    text-align: center;
+}
+
+.delete-cell {
+    width: 40px;
+    text-align: center;
+}
+
+.delete-btn {
+    cursor: pointer;
+    opacity: 0.7;
+    background: none;
+    border: none;
+    color: var(--vscode-foreground);
+    padding: 4px;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+    color: var(--vscode-errorForeground);
+}
+
+.add-row-btn {
+    margin-top: 8px;
+}

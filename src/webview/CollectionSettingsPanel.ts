@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getNonce, getVscodeElementsUri, getCodiconsUri } from './webviewUtils';
+import { getNonce, getVscodeElementsUri, getCodiconsUri, getSharedCssUri, getCollectionSettingsCssUri } from './webviewUtils';
 import { Collection, RequestHeader, AuthConfig, AuthType } from '../models/Collection';
 import { StorageService } from '../storage/StorageService';
 import { VariableService } from '../storage/VariableService';
@@ -135,6 +135,9 @@ export class CollectionSettingsPanel {
         const nonce = getNonce();
         const { bundleUri } = getVscodeElementsUri(this._panel.webview, this._extensionUri);
         const codiconsUri = getCodiconsUri(this._panel.webview, this._extensionUri);
+        const sharedCssUri = getSharedCssUri(this._panel.webview, this._extensionUri);
+        const collectionSettingsCssUri = getCollectionSettingsCssUri(this._panel.webview, this._extensionUri);
+        const extensionVersion = vscode.extensions.getExtension('timheuer.endpoint')?.packageJSON.version ?? '1.0.0';
 
         const headers = this._collection.defaultHeaders || [];
         const auth = this._collection.defaultAuth || { type: 'none' as AuthType };
@@ -144,175 +147,11 @@ export class CollectionSettingsPanel {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${this._panel.webview.cspSource} 'unsafe-inline'; font-src ${this._panel.webview.cspSource}; script-src ${this._panel.webview.cspSource} 'nonce-${nonce}';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${this._panel.webview.cspSource}; font-src ${this._panel.webview.cspSource}; script-src ${this._panel.webview.cspSource} 'nonce-${nonce}';">
     <link href="${codiconsUri}" rel="stylesheet" />
+    <link href="${sharedCssUri}" rel="stylesheet" />
+    <link href="${collectionSettingsCssUri}" rel="stylesheet" />
     <title>Collection Settings</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            padding: 16px;
-            font-family: var(--vscode-font-family);
-            font-size: var(--vscode-font-size);
-            color: var(--vscode-foreground);
-            background-color: var(--vscode-editor-background);
-        }
-        h2 {
-            margin-top: 0;
-            border-bottom: 1px solid var(--vscode-widget-border);
-            padding-bottom: 8px;
-        }
-        .section {
-            margin-bottom: 24px;
-        }
-        .section-title {
-            font-weight: 500;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-        .key-value-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .key-value-table th {
-            text-align: left;
-            padding: 8px;
-            border-bottom: 1px solid var(--vscode-widget-border);
-            font-weight: 500;
-        }
-        .key-value-table td {
-            padding: 4px 8px;
-            vertical-align: middle;
-        }
-        .key-value-row {
-            border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
-        }
-        .key-value-row:last-child {
-            border-bottom: none;
-        }
-        .checkbox-cell { width: 32px; text-align: center; }
-        .delete-cell { width: 40px; text-align: center; }
-        .delete-btn {
-            cursor: pointer;
-            opacity: 0.7;
-            background: none;
-            border: none;
-            color: var(--vscode-foreground);
-            padding: 4px;
-        }
-        .delete-btn:hover {
-            opacity: 1;
-            color: var(--vscode-errorForeground);
-        }
-        .add-row-btn { margin-top: 8px; }
-        .auth-section { display: flex; flex-direction: column; gap: 12px; }
-        .auth-fields {
-            display: none;
-            flex-direction: column;
-            gap: 8px;
-            padding: 12px;
-            border: 1px solid var(--vscode-widget-border);
-            border-radius: 4px;
-            margin-top: 8px;
-        }
-        .auth-fields.active { display: flex; }
-        .auth-field-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .auth-field-row label {
-            width: 100px;
-            flex-shrink: 0;
-        }
-        .auth-field-row vscode-textfield,
-        .auth-field-row vscode-single-select {
-            flex: 1;
-        }
-        .secret-field-wrapper {
-            display: flex;
-            flex: 1;
-            gap: 4px;
-            align-items: center;
-        }
-        .secret-field-wrapper vscode-textfield {
-            flex: 1;
-        }
-        .secret-toggle-btn {
-            cursor: pointer;
-            opacity: 0.7;
-            padding: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .secret-toggle-btn:hover {
-            opacity: 1;
-        }
-        .button-row {
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px solid var(--vscode-widget-border);
-        }
-        .info-text {
-            color: var(--vscode-descriptionForeground);
-            font-size: 12px;
-            margin-bottom: 12px;
-        }
-        /* Autocomplete dropdown styles */
-        .autocomplete-dropdown {
-            position: fixed;
-            z-index: 10000;
-            min-width: 250px;
-            max-width: 400px;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-            border: 1px solid var(--vscode-editorWidget-border, var(--vscode-widget-border));
-            border-radius: 4px;
-            box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
-            display: none;
-        }
-        .autocomplete-dropdown.visible {
-            display: block;
-        }
-        .autocomplete-item {
-            display: flex;
-            flex-direction: column;
-            padding: 6px 10px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
-        }
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-        .autocomplete-item:hover,
-        .autocomplete-item.selected {
-            background-color: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
-        }
-        .autocomplete-item.selected {
-            background-color: var(--vscode-list-activeSelectionBackground, #094771);
-            color: var(--vscode-list-activeSelectionForeground, #ffffff);
-        }
-        .autocomplete-item-name {
-            font-family: var(--vscode-editor-font-family, monospace);
-            font-size: var(--vscode-editor-font-size, 13px);
-            font-weight: 500;
-        }
-        .autocomplete-item-source {
-            font-size: 11px;
-            color: var(--vscode-descriptionForeground);
-            margin-top: 2px;
-        }
-        .autocomplete-item.selected .autocomplete-item-source {
-            color: var(--vscode-list-activeSelectionForeground, #ffffff);
-            opacity: 0.8;
-        }
-        .autocomplete-no-results {
-            padding: 8px 10px;
-            color: var(--vscode-descriptionForeground);
-            font-style: italic;
-        }
-    </style>
 </head>
 <body>
     <!-- Autocomplete dropdown -->
@@ -677,9 +516,11 @@ export class CollectionSettingsPanel {
                 }
             });
             
-            // Close autocomplete on scroll
-            document.addEventListener('scroll', () => {
-                hideAutocomplete();
+            // Close autocomplete on scroll (but ignore scrolls within the dropdown itself)
+            document.addEventListener('scroll', (e) => {
+                if (!autocompleteDropdown.contains(e.target)) {
+                    hideAutocomplete();
+                }
             }, true);
 
             function collectHeaderRows() {
@@ -768,7 +609,7 @@ export class CollectionSettingsPanel {
             const commonHeaders = [
                 { name: 'Accept', value: 'application/json' },
                 { name: 'Content-Type', value: 'application/json' },
-                { name: 'User-Agent', value: 'Endpoint/1.0' },
+                { name: 'User-Agent', value: 'Endpoint for VS Code/${extensionVersion}' },
                 { name: 'Accept-Encoding', value: 'gzip, deflate' },
                 { name: 'Cache-Control', value: 'no-cache' }
             ];
