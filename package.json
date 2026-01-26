@@ -344,9 +344,14 @@
           "group": "2_delete"
         },
         {
+          "command": "endpoint.editRequest",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "inline@1"
+        },
+        {
           "command": "endpoint.deleteRequest",
           "when": "view == endpointCollections && viewItem == request",
-          "group": "inline"
+          "group": "inline@2"
         },
         {
           "command": "endpoint.editRequest",
