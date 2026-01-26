@@ -37,7 +37,7 @@
     "web services",
     "curl"
   ],
-  "activationEvents": [ ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -564,6 +564,7 @@
     "@timheuer/vscode-ext-logger": "^0.1.35",
     "@vscode-elements/elements": "^1.2.0",
     "@vscode/codicons": "^0.0.36",
+    "monaco-editor": "^0.55.1",
     "shiki": "^3.21.0"
   }
 }

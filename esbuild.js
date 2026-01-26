@@ -6,6 +6,49 @@ const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
 
 /**
+ * Recursively copy a directory with optional filter
+ * @param {string} src - Source directory
+ * @param {string} dest - Destination directory
+ * @param {function} [filter] - Optional filter function (filename, fullPath) => boolean
+ */
+function copyDirRecursive(src, dest, filter) {
+	if (!fs.existsSync(src)) {
+		return false;
+	}
+	fs.mkdirSync(dest, { recursive: true });
+	const entries = fs.readdirSync(src, { withFileTypes: true });
+	for (const entry of entries) {
+		const srcPath = path.join(src, entry.name);
+		const destPath = path.join(dest, entry.name);
+		if (entry.isDirectory()) {
+			copyDirRecursive(srcPath, destPath, filter);
+		} else {
+			// Apply filter if provided
+			if (!filter || filter(entry.name, srcPath)) {
+				fs.copyFileSync(srcPath, destPath);
+			}
+		}
+	}
+	return true;
+}
+
+/**
+ * Filter for Monaco files - excludes workers and non-English localization
+ * We disable workers in MonacoEnvironment since we use read-only editors
+ */
+function monacoFilter(filename, fullPath) {
+	// Skip worker files (we disable workers for read-only viewing)
+	if (filename.includes('.worker')) {
+		return false;
+	}
+	// Skip non-English localization files (nls.messages.XX.js where XX is not empty)
+	if (filename.startsWith('nls.messages.') && !filename.startsWith('nls.messages.js')) {
+		return false;
+	}
+	return true;
+}
+
+/**
  * Copy webview assets from node_modules to dist/webview
  * These assets need to be distributed with the extension since node_modules is excluded
  */
@@ -69,6 +112,15 @@ function copyWebviewAssets() {
 	if (fs.existsSync(collectionSettingsCssSource)) {
 		fs.copyFileSync(collectionSettingsCssSource, path.join(webviewDir, 'collectionSettings.css'));
 		console.log('[assets] Copied collectionSettings.css');
+	}
+
+	// Copy Monaco Editor (minified version, excluding workers and non-English localization)
+	const monacoSource = path.join(__dirname, 'node_modules', 'monaco-editor', 'min', 'vs');
+	const monacoDest = path.join(webviewDir, 'monaco', 'vs');
+	if (copyDirRecursive(monacoSource, monacoDest, monacoFilter)) {
+		console.log('[assets] Copied Monaco Editor (optimized)');
+	} else {
+		console.warn('[assets] Warning: Monaco Editor not found at', monacoSource);
 	}
 }
 

@@ -13,23 +13,7 @@ body {
 }
 
 /* Shiki dual-theme support - uses CSS variables for light/dark */
-pre.shiki,
-.shiki,
-.shiki code,
-.shiki .line,
-.shiki span {
-    background-color: transparent !important;
-}
-
-.vscode-dark .shiki,
-.vscode-dark .shiki span {
-    color: var(--shiki-dark) !important;
-}
-
-.vscode-light .shiki,
-.vscode-light .shiki span {
-    color: var(--shiki-light) !important;
-}
+/* DEPRECATED: Using Monaco Editor instead */
 
 /* Request Bar */
 .request-bar {
@@ -244,6 +228,19 @@ vscode-single-select {
     word-break: break-word;
     max-height: 400px;
     overflow: auto;
+}
+
+/* Monaco Editor Container Styles */
+.monaco-editor-container {
+    width: 100%;
+    height: 400px;
+    border: 1px solid var(--vscode-input-border, var(--vscode-widget-border));
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.monaco-editor-container .monaco-editor {
+    border-radius: 4px;
 }
 
 /* Syntax highlighting */
@@ -617,33 +614,6 @@ vscode-checkbox {
 
 .code-snippet-select-group vscode-single-select {
     min-width: 160px;
-}
-
-.code-snippet-output {
-    background-color: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-input-border, var(--vscode-widget-border));
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.code-snippet-output pre {
-    margin: 0;
-    padding: 12px;
-    overflow: auto;
-    max-height: 400px;
-}
-
-.code-snippet-output code {
-    font-family: var(--vscode-editor-font-family, monospace);
-    font-size: var(--vscode-editor-font-size, 13px);
-    line-height: 1.5;
-    white-space: pre;
-    color: var(--vscode-foreground);
-}
-
-.code-snippet-placeholder {
-    color: var(--vscode-descriptionForeground);
-    font-style: italic;
 }
 
 /* Settings Tab Styles */

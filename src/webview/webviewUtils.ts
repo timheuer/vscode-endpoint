@@ -99,3 +99,35 @@ export function getCollectionSettingsCssUri(
         'collectionSettings.css'
     ]);
 }
+
+/**
+ * Get the URI for Monaco Editor loader
+ * Assets are copied to dist/webview/monaco during build
+ */
+export function getMonacoLoaderUri(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): vscode.Uri {
+    return getWebviewUri(webview, extensionUri, [
+        'dist',
+        'webview',
+        'monaco',
+        'vs',
+        'loader.js'
+    ]);
+}
+
+/**
+ * Get the base URI for Monaco Editor (for AMD require.config paths)
+ * Assets are copied to dist/webview/monaco during build
+ */
+export function getMonacoBaseUri(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): vscode.Uri {
+    return getWebviewUri(webview, extensionUri, [
+        'dist',
+        'webview',
+        'monaco'
+    ]);
+}

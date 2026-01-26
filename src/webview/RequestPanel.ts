@@ -9,7 +9,6 @@ import { StorageService } from '../storage/StorageService';
 import { VariableService } from '../storage/VariableService';
 import { ResponseStorage } from '../storage/ResponseStorage';
 import { getGenerator } from '../codegen';
-import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
 import { DirtyStateProvider } from '../providers/DirtyStateProvider';
 import { getLogger } from '../logger';
 
@@ -372,18 +371,17 @@ export class RequestPanel {
 
     private async _generateCodeSnippet(data: RequestData, language: string, resolveVariables: boolean): Promise<void> {
         if (!RequestPanel._variableService || !RequestPanel._storageService) {
-            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', highlightedCode: '<pre><code>// Services not initialized</code></pre>', rawCode: '// Services not initialized' });
+            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', rawCode: '// Services not initialized', language });
             return;
         }
 
         try {
             const code = await this._buildCodeSnippet(data, language, resolveVariables);
-            const highlightedCode = await SyntaxHighlighter.getInstance().highlight(code, language);
-            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', highlightedCode, rawCode: code });
+            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', rawCode: code, language });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             const errorCode = `// Error: ${errorMessage}`;
-            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', highlightedCode: `<pre><code>${errorCode}</code></pre>`, rawCode: errorCode });
+            this._panel.webview.postMessage({ type: 'codeSnippetGenerated', rawCode: errorCode, language });
         }
     }
 
@@ -913,11 +911,7 @@ export class RequestPanel {
                 responseStorage.storeResponse(data.name, response);
             }
 
-            // Highlight response body based on content type
-            const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
-            const highlightedBody = await SyntaxHighlighter.getInstance().highlightResponse(response.body, contentType);
-
-            // Send response to webview for display in tabbed view
+            // Send response to webview for display (Monaco handles syntax highlighting)
             this._panel.webview.postMessage({
                 type: 'showResponse',
                 data: {
@@ -926,8 +920,7 @@ export class RequestPanel {
                     time: response.time,
                     size: response.size,
                     headers: response.headers,
-                    body: response.body,
-                    highlightedBody
+                    body: response.body
                 }
             });
 

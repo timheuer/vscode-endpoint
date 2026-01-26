@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getNonce, getVscodeElementsUri, getCodiconsUri, getSharedCssUri, getRequestViewCssUri } from './webviewUtils';
+import { getNonce, getVscodeElementsUri, getCodiconsUri, getSharedCssUri, getRequestViewCssUri, getMonacoLoaderUri, getMonacoBaseUri } from './webviewUtils';
 import { Request, HttpMethod, RequestBody, AuthConfig } from '../models/Collection';
 import { getSetting } from '../settings';
 
@@ -68,6 +68,8 @@ export function generateRequestPanelHtml(
     const codiconsUri = getCodiconsUri(webview, extensionUri);
     const sharedCssUri = getSharedCssUri(webview, extensionUri);
     const requestViewCssUri = getRequestViewCssUri(webview, extensionUri);
+    const monacoLoaderUri = getMonacoLoaderUri(webview, extensionUri);
+    const monacoBaseUri = getMonacoBaseUri(webview, extensionUri);
 
     const data = requestData || getDefaultRequestData();
 
@@ -85,7 +87,7 @@ export function generateRequestPanelHtml(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src ${webview.cspSource} 'nonce-${nonce}';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src ${webview.cspSource} 'unsafe-eval' 'nonce-${nonce}'; worker-src blob:;">
     <link href="${codiconsUri}" rel="stylesheet" />
     <link href="${sharedCssUri}" rel="stylesheet" />
     <link href="${requestViewCssUri}" rel="stylesheet" />
@@ -376,7 +378,7 @@ export function generateRequestPanelHtml(
             <!-- Response Body Tab -->
             <vscode-tab-panel>
                 <div class="response-tab-content">
-                    <div class="response-body" id="responseBody"></div>
+                    <div class="monaco-editor-container" id="responseBodyContainer"></div>
                 </div>
             </vscode-tab-panel>
 
@@ -416,7 +418,7 @@ export function generateRequestPanelHtml(
             <!-- Raw Tab -->
             <vscode-tab-panel>
                 <div class="response-tab-content">
-                    <div class="response-body" id="responseRaw"></div>
+                    <div class="monaco-editor-container" id="responseRawContainer"></div>
                 </div>
             </vscode-tab-panel>
 
@@ -441,18 +443,215 @@ export function generateRequestPanelHtml(
                             Copy
                         </vscode-button>
                     </div>
-                    <div class="code-snippet-output" id="codeSnippetOutput">
-                        <pre><code id="codeSnippetCode">Send a request to generate code snippet</code></pre>
-                    </div>
+                    <div class="monaco-editor-container" id="codeSnippetContainer"></div>
                 </div>
             </vscode-tab-panel>
         </vscode-tabs>
     </div>
 
     <script type="module" nonce="${nonce}" src="${bundleUri}"></script>
+    <script src="${monacoLoaderUri}"></script>
     <script nonce="${nonce}">
         (function() {
             const vscode = acquireVsCodeApi();
+            
+            // Monaco Editor instances and state
+            let monacoLoaded = false;
+            let monaco = null;
+            let responseBodyEditor = null;
+            let responseRawEditor = null;
+            let codeSnippetEditor = null;
+            let pendingResponseBody = null;
+            let pendingResponseRaw = null;
+            let pendingCodeSnippet = null;
+            
+            // Monaco base path for local resources
+            const monacoBasePath = '${monacoBaseUri}';
+            
+            // Initialize Monaco AMD loader
+            require.config({ 
+                paths: { vs: monacoBasePath + '/vs' }
+            });
+            
+            // Disable Monaco workers - not needed for read-only viewing
+            // This significantly reduces bundle size
+            self.MonacoEnvironment = {
+                getWorker: function() { return undefined; }
+            };
+            
+            // Get Monaco theme based on VS Code theme
+            function getMonacoTheme() {
+                if (document.body.classList.contains('vscode-light')) return 'vs';
+                if (document.body.classList.contains('vscode-high-contrast')) return 'hc-black';
+                return 'vs-dark';
+            }
+            
+            // Detect language from content type
+            function detectLanguage(contentType, body) {
+                const ct = (contentType || '').toLowerCase();
+                if (ct.includes('json')) return 'json';
+                if (ct.includes('xml')) return 'xml';
+                if (ct.includes('html')) return 'html';
+                if (ct.includes('javascript')) return 'javascript';
+                if (ct.includes('css')) return 'css';
+                
+                // Try to detect from content
+                if (body) {
+                    const trimmed = body.trim();
+                    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                        try { JSON.parse(trimmed); return 'json'; } catch {}
+                    }
+                    if (trimmed.startsWith('<?xml') || (trimmed.startsWith('<') && !trimmed.startsWith('<!'))) {
+                        return 'xml';
+                    }
+                }
+                return 'plaintext';
+            }
+            
+            // Map code generator IDs to Monaco language IDs
+            function getLanguageForGenerator(generatorId) {
+                const map = {
+                    'curl': 'shell',
+                    'javascript-fetch': 'javascript',
+                    'python-requests': 'python',
+                    'csharp-httpclient': 'csharp',
+                    'go-nethttp': 'go',
+                    'php-curl': 'php'
+                };
+                return map[generatorId] || 'plaintext';
+            }
+            
+            // Common Monaco editor options for read-only viewers
+            function getReadOnlyEditorOptions(language, theme) {
+                return {
+                    language: language,
+                    theme: theme,
+                    readOnly: true,
+                    domReadOnly: true,
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    contextmenu: false,
+                    folding: true,
+                    showFoldingControls: 'always',
+                    foldingStrategy: 'indentation',
+                    wordWrap: 'on',
+                    renderLineHighlight: 'none',
+                    scrollbar: {
+                        verticalScrollbarSize: 10,
+                        horizontalScrollbarSize: 10
+                    },
+                    // Disable language services (no IntelliSense for read-only viewer)
+                    hover: { enabled: false },
+                    quickSuggestions: false,
+                    parameterHints: { enabled: false },
+                    suggestOnTriggerCharacters: false,
+                    acceptSuggestionOnCommitCharacter: false,
+                    wordBasedSuggestions: 'off',
+                    inlayHints: { enabled: 'off' },
+                    codeLens: false,
+                    lightbulb: { enabled: 'off' },
+                    links: false
+                };
+            }
+            
+            // Initialize Monaco editors
+            require(['vs/editor/editor.main'], function(monacoModule) {
+                monaco = monacoModule;
+                monacoLoaded = true;
+                
+                const theme = getMonacoTheme();
+                
+                // Create Response Body editor
+                const bodyContainer = document.getElementById('responseBodyContainer');
+                if (bodyContainer) {
+                    responseBodyEditor = monaco.editor.create(bodyContainer, {
+                        value: '',
+                        ...getReadOnlyEditorOptions('json', theme)
+                    });
+                    if (pendingResponseBody) {
+                        updateResponseBodyEditor(pendingResponseBody.body, pendingResponseBody.contentType);
+                        pendingResponseBody = null;
+                    }
+                }
+                
+                // Create Response Raw editor
+                const rawContainer = document.getElementById('responseRawContainer');
+                if (rawContainer) {
+                    responseRawEditor = monaco.editor.create(rawContainer, {
+                        value: '',
+                        ...getReadOnlyEditorOptions('plaintext', theme)
+                    });
+                    if (pendingResponseRaw) {
+                        updateResponseRawEditor(pendingResponseRaw);
+                        pendingResponseRaw = null;
+                    }
+                }
+                
+                // Create Code Snippet editor
+                const snippetContainer = document.getElementById('codeSnippetContainer');
+                if (snippetContainer) {
+                    codeSnippetEditor = monaco.editor.create(snippetContainer, {
+                        value: '// Send a request to generate code snippet',
+                        ...getReadOnlyEditorOptions('javascript', theme)
+                    });
+                    if (pendingCodeSnippet) {
+                        updateCodeSnippetEditor(pendingCodeSnippet.code, pendingCodeSnippet.language);
+                        pendingCodeSnippet = null;
+                    }
+                }
+                
+                // Watch for theme changes
+                const themeObserver = new MutationObserver(function() {
+                    const newTheme = getMonacoTheme();
+                    monaco.editor.setTheme(newTheme);
+                });
+                themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            });
+            
+            // Update Response Body editor
+            function updateResponseBodyEditor(body, contentType) {
+                if (!monacoLoaded || !responseBodyEditor) {
+                    pendingResponseBody = { body, contentType };
+                    return;
+                }
+                
+                const language = detectLanguage(contentType, body);
+                let displayBody = body;
+                
+                // Format JSON for readability
+                if (language === 'json') {
+                    try {
+                        const parsed = JSON.parse(body);
+                        displayBody = JSON.stringify(parsed, null, 2);
+                    } catch {}
+                }
+                
+                monaco.editor.setModelLanguage(responseBodyEditor.getModel(), language);
+                responseBodyEditor.setValue(displayBody);
+            }
+            
+            // Update Response Raw editor
+            function updateResponseRawEditor(body) {
+                if (!monacoLoaded || !responseRawEditor) {
+                    pendingResponseRaw = body;
+                    return;
+                }
+                responseRawEditor.setValue(body);
+            }
+            
+            // Update Code Snippet editor
+            function updateCodeSnippetEditor(code, generatorLanguage) {
+                if (!monacoLoaded || !codeSnippetEditor) {
+                    pendingCodeSnippet = { code, language: generatorLanguage };
+                    return;
+                }
+                
+                const language = getLanguageForGenerator(generatorLanguage);
+                monaco.editor.setModelLanguage(codeSnippetEditor.getModel(), language);
+                codeSnippetEditor.setValue(code);
+            }
             
             // Initial state
             let requestData = ${JSON.stringify(data)};
@@ -1111,16 +1310,11 @@ export function generateRequestPanelHtml(
                         break;
                     case 'codeSnippetGenerated':
                         currentCodeSnippet = message.rawCode || '';
-                        const outputEl = document.getElementById('codeSnippetOutput');
-                        if (outputEl) {
-                            if (message.highlightedCode) {
-                                // Use pre-highlighted HTML from extension host (Shiki generates own <pre><code>)
-                                outputEl.innerHTML = message.highlightedCode;
-                            } else if (currentCodeSnippet) {
-                                outputEl.innerHTML = '<pre><code>' + currentCodeSnippet.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>';
-                            } else {
-                                outputEl.innerHTML = '<pre><code class="code-snippet-placeholder">Failed to generate code</code></pre>';
-                            }
+                        const codeLanguage = message.language || 'curl';
+                        if (currentCodeSnippet) {
+                            updateCodeSnippetEditor(currentCodeSnippet, codeLanguage);
+                        } else {
+                            updateCodeSnippetEditor('// Failed to generate code', codeLanguage);
                         }
                         break;
                     case 'codeCopied':
@@ -1434,27 +1628,9 @@ export function generateRequestPanelHtml(
                 document.getElementById('responseTime').textContent = response.time + 'ms';
                 document.getElementById('responseSize').textContent = formatBytes(response.size);
                 
-                // Detect content type
+                // Response body tab - use Monaco editor
                 const contentType = (response.headers && (response.headers['content-type'] || response.headers['Content-Type'])) || '';
-                const isJson = contentType.includes('json') || response.body.trim().startsWith('{') || response.body.trim().startsWith('[');
-                const isXml = contentType.includes('xml') || response.body.trim().startsWith('<?xml') || response.body.trim().startsWith('<');
-                
-                // Response body tab - use pre-highlighted HTML from extension host
-                const bodyEl = document.getElementById('responseBody');
-                if (response.highlightedBody) {
-                    // Use pre-highlighted HTML from extension host
-                    bodyEl.innerHTML = response.highlightedBody;
-                } else if (isJson) {
-                    try {
-                        const parsed = JSON.parse(response.body);
-                        const formatted = JSON.stringify(parsed, null, 2);
-                        bodyEl.textContent = formatted;
-                    } catch {
-                        bodyEl.textContent = response.body;
-                    }
-                } else {
-                    bodyEl.textContent = response.body;
-                }
+                updateResponseBodyEditor(response.body, contentType);
                 
                 // Headers tab
                 const headers = response.headers || {};
@@ -1507,8 +1683,8 @@ export function generateRequestPanelHtml(
                     document.getElementById('responseCookiesTable').style.display = 'none';
                 }
                 
-                // Raw tab - unformatted response
-                document.getElementById('responseRaw').textContent = response.body;
+                // Raw tab - unformatted response in Monaco editor
+                updateResponseRawEditor(response.body);
                 
                 // Generate code snippet
                 generateCodeSnippet();
@@ -1533,8 +1709,11 @@ export function generateRequestPanelHtml(
                 
                 document.getElementById('responseTime').textContent = '-';
                 document.getElementById('responseSize').textContent = '-';
-                document.getElementById('responseBody').textContent = error;
-                document.getElementById('responseRaw').textContent = error;
+                
+                // Show error in Monaco editors
+                updateResponseBodyEditor(error, 'text/plain');
+                updateResponseRawEditor(error);
+                
                 document.getElementById('headersCount').textContent = '0';
                 document.getElementById('headersCount').style.display = 'none';
                 document.getElementById('cookiesCount').textContent = '0';
