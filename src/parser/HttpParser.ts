@@ -16,6 +16,33 @@ export interface ParsedHttpFile {
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'];
 
 /**
+ * Transform {{$dotenv VARIABLE_NAME}} to {{VARIABLE_NAME}} for import
+ */
+function transformVariablesForImport(text: string): string {
+    return text.replace(/\{\{\$dotenv\s+([^}]+)\}\}/g, '{{$1}}');
+}
+
+/**
+ * Transform {{VARIABLE_NAME}} to {{$dotenv VARIABLE_NAME}} for export
+ * Skips built-in variables like {{$guid}}, {{$timestamp}}, {{$randomInt}}, etc.
+ * Also skips request chaining syntax like {{requestName.response.body.path}}
+ */
+function transformVariablesForExport(text: string): string {
+    return text.replace(/\{\{([^}]+)\}\}/g, (match, content) => {
+        const trimmedContent = content.trim();
+        // Skip if already a $dotenv or other $ prefixed built-in variable
+        if (trimmedContent.startsWith('$')) {
+            return match;
+        }
+        // Skip request chaining syntax (contains dots like requestName.response.body)
+        if (trimmedContent.includes('.')) {
+            return match;
+        }
+        return `{{$dotenv ${trimmedContent}}}`;
+    });
+}
+
+/**
  * Parse a .http file into structured data
  * @param content The raw content of the .http file
  * @returns Parsed file with variables and requests
@@ -38,7 +65,7 @@ export function parseHttpFile(content: string): ParsedHttpFile {
                     bodyLines.pop();
                 }
                 if (bodyLines.length > 0) {
-                    currentRequest.body = bodyLines.join('\n');
+                    currentRequest.body = transformVariablesForImport(bodyLines.join('\n'));
                 }
             }
             requests.push(currentRequest);
@@ -66,7 +93,7 @@ export function parseHttpFile(content: string): ParsedHttpFile {
         // Check for file-level variable (@varName = value)
         const variableMatch = trimmedLine.match(/^@(\w+)\s*=\s*(.+)$/);
         if (variableMatch && !currentRequest) {
-            variables[variableMatch[1]] = variableMatch[2].trim();
+            variables[variableMatch[1]] = transformVariablesForImport(variableMatch[2].trim());
             continue;
         }
 
@@ -95,7 +122,7 @@ export function parseHttpFile(content: string): ParsedHttpFile {
             currentRequest = {
                 name: pendingName,
                 method: requestLineMatch[1].toUpperCase(),
-                url: requestLineMatch[2].trim(),
+                url: transformVariablesForImport(requestLineMatch[2].trim()),
                 headers: [],
             };
             pendingName = undefined;
@@ -115,7 +142,7 @@ export function parseHttpFile(content: string): ParsedHttpFile {
             if (headerMatch) {
                 currentRequest.headers.push({
                     name: headerMatch[1].trim(),
-                    value: headerMatch[2].trim(),
+                    value: transformVariablesForImport(headerMatch[2].trim()),
                 });
                 continue;
             }
@@ -202,7 +229,7 @@ export function serializeToHttpFile(requests: Request[], variables?: Record<stri
     // Add variables at the top
     if (variables && Object.keys(variables).length > 0) {
         for (const [name, value] of Object.entries(variables)) {
-            lines.push(`@${name} = ${value}`);
+            lines.push(`@${name} = ${transformVariablesForExport(value)}`);
         }
         lines.push('');
     }
@@ -222,18 +249,18 @@ export function serializeToHttpFile(requests: Request[], variables?: Record<stri
         }
 
         // Add request line
-        lines.push(`${request.method} ${request.url}`);
+        lines.push(`${request.method} ${transformVariablesForExport(request.url)}`);
 
         // Add headers
         const enabledHeaders = request.headers.filter(h => h.enabled);
         for (const header of enabledHeaders) {
-            lines.push(`${header.name}: ${header.value}`);
+            lines.push(`${header.name}: ${transformVariablesForExport(header.value)}`);
         }
 
         // Add body if present
         if (request.body && request.body.type !== 'none' && request.body.content) {
             lines.push('');
-            lines.push(request.body.content);
+            lines.push(transformVariablesForExport(request.body.content));
         }
 
         // Add blank line between requests
