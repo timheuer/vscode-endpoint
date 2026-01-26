@@ -1,4 +1,4 @@
-import { Request, HttpMethod, RequestBody } from '../models/Collection';
+import { Request, HttpMethod, RequestBody, AuthConfig } from '../models/Collection';
 
 export interface ParsedRequest {
     name?: string;
@@ -192,18 +192,86 @@ function detectBodyType(body: string | undefined, headers: { name: string; value
 }
 
 /**
+ * Detect auth configuration from Authorization header
+ * Returns the auth config and whether the header should be removed
+ */
+function detectAuthFromHeaders(headers: { name: string; value: string }[]): { auth?: AuthConfig; filteredHeaders: { name: string; value: string }[] } {
+    const authHeader = headers.find(h => h.name.toLowerCase() === 'authorization');
+
+    if (!authHeader) {
+        return { filteredHeaders: headers };
+    }
+
+    const value = authHeader.value.trim();
+
+    // Check for Bearer token
+    const bearerMatch = value.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch) {
+        return {
+            auth: {
+                type: 'bearer',
+                token: bearerMatch[1].trim(),
+            },
+            filteredHeaders: headers.filter(h => h.name.toLowerCase() !== 'authorization'),
+        };
+    }
+
+    // Check for Basic auth
+    const basicMatch = value.match(/^Basic\s+(.+)$/i);
+    if (basicMatch) {
+        const encoded = basicMatch[1].trim();
+        // Try to decode base64 to extract username:password
+        // If it's a variable like {{$dotenv ...}}, keep it as-is in the password field
+        if (encoded.startsWith('{{') && encoded.endsWith('}}')) {
+            // Variable reference - store as password (user can adjust in UI)
+            return {
+                auth: {
+                    type: 'basic',
+                    username: '',
+                    password: encoded,
+                },
+                filteredHeaders: headers.filter(h => h.name.toLowerCase() !== 'authorization'),
+            };
+        }
+
+        try {
+            const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+            const colonIndex = decoded.indexOf(':');
+            if (colonIndex !== -1) {
+                return {
+                    auth: {
+                        type: 'basic',
+                        username: decoded.substring(0, colonIndex),
+                        password: decoded.substring(colonIndex + 1),
+                    },
+                    filteredHeaders: headers.filter(h => h.name.toLowerCase() !== 'authorization'),
+                };
+            }
+        } catch {
+            // If decoding fails, keep the header as-is
+        }
+    }
+
+    // Unknown auth type - keep header as-is
+    return { filteredHeaders: headers };
+}
+
+/**
  * Convert a parsed request to a Request model
  */
 export function parsedRequestToRequest(parsed: ParsedRequest, id?: string): Request {
     const now = Date.now();
     const bodyType = detectBodyType(parsed.body, parsed.headers);
 
+    // Detect auth from Authorization header
+    const { auth, filteredHeaders } = detectAuthFromHeaders(parsed.headers);
+
     return {
         id: id || `${now}-${Math.random().toString(36).substring(2, 9)}`,
         name: parsed.name || `${parsed.method} Request`,
         method: parsed.method.toUpperCase() as HttpMethod,
         url: parsed.url,
-        headers: parsed.headers.map(h => ({
+        headers: filteredHeaders.map(h => ({
             name: h.name,
             value: h.value,
             enabled: true,
@@ -212,6 +280,7 @@ export function parsedRequestToRequest(parsed: ParsedRequest, id?: string): Requ
             type: bodyType,
             content: parsed.body || '',
         },
+        auth,
         createdAt: now,
         updatedAt: now,
     };

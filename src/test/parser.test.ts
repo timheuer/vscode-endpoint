@@ -166,10 +166,101 @@ GET {{baseUrl}}/users`;
             // Import (removes $dotenv)
             const imported = parseHttpFile(exported);
 
-            // Should match original
+            // Should match original. Note: Authorization header now gets converted to auth config
             assert.strictEqual(imported.requests[0].url, request.url);
-            assert.strictEqual(imported.requests[0].headers[0].value, request.headers[0].value);
+            // After import, Bearer token should be in auth config, not headers
+            const convertedRequest = parsedRequestToRequest(imported.requests[0]);
+            assert.strictEqual(convertedRequest.auth?.type, 'bearer');
+            assert.strictEqual(convertedRequest.auth?.token, '{{TOKEN}}');
+            // Authorization header should be removed since it's now in auth
+            assert.ok(!convertedRequest.headers.some(h => h.name === 'Authorization'));
             assert.strictEqual(imported.requests[0].body, request.body.content);
+        });
+    });
+
+    suite('Auth Detection on Import', () => {
+        test('should detect Bearer auth and populate auth config', () => {
+            const content = `GET https://api.example.com/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            assert.strictEqual(request.auth?.type, 'bearer');
+            assert.strictEqual(request.auth?.token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+            // Authorization header should be removed
+            assert.ok(!request.headers.some(h => h.name.toLowerCase() === 'authorization'));
+        });
+
+        test('should detect Bearer auth with variable placeholder', () => {
+            const content = `GET https://api.example.com/users
+Authorization: Bearer {{upsTokenProd.response.body.access_token}}`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            assert.strictEqual(request.auth?.type, 'bearer');
+            assert.strictEqual(request.auth?.token, '{{upsTokenProd.response.body.access_token}}');
+            assert.ok(!request.headers.some(h => h.name.toLowerCase() === 'authorization'));
+        });
+
+        test('should detect Basic auth and decode credentials', () => {
+            // base64("user:pass") = "dXNlcjpwYXNz"
+            const content = `GET https://api.example.com/users
+Authorization: Basic dXNlcjpwYXNz`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            assert.strictEqual(request.auth?.type, 'basic');
+            assert.strictEqual(request.auth?.username, 'user');
+            assert.strictEqual(request.auth?.password, 'pass');
+            assert.ok(!request.headers.some(h => h.name.toLowerCase() === 'authorization'));
+        });
+
+        test('should handle Basic auth with variable placeholder', () => {
+            const content = `GET https://api.example.com/users
+Authorization: Basic {{UPS_BASIC64_CREDS}}`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            assert.strictEqual(request.auth?.type, 'basic');
+            assert.strictEqual(request.auth?.username, '');
+            assert.strictEqual(request.auth?.password, '{{UPS_BASIC64_CREDS}}');
+            assert.ok(!request.headers.some(h => h.name.toLowerCase() === 'authorization'));
+        });
+
+        test('should preserve other headers when extracting auth', () => {
+            const content = `GET https://api.example.com/users
+Accept: application/json
+Authorization: Bearer mytoken
+Content-Type: application/json`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            assert.strictEqual(request.auth?.type, 'bearer');
+            assert.strictEqual(request.headers.length, 2);
+            assert.ok(request.headers.some(h => h.name === 'Accept'));
+            assert.ok(request.headers.some(h => h.name === 'Content-Type'));
+            assert.ok(!request.headers.some(h => h.name.toLowerCase() === 'authorization'));
+        });
+
+        test('should keep unknown auth scheme as header', () => {
+            const content = `GET https://api.example.com/users
+Authorization: Digest abc123`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            // Unknown auth types should remain as headers
+            assert.strictEqual(request.auth, undefined);
+            assert.ok(request.headers.some(h => h.name === 'Authorization'));
+        });
+
+        test('should handle case-insensitive Bearer detection', () => {
+            const content = `GET https://api.example.com/users
+Authorization: bearer mytoken`;
+            const parsed = parseHttpFile(content);
+            const request = parsedRequestToRequest(parsed.requests[0]);
+
+            assert.strictEqual(request.auth?.type, 'bearer');
+            assert.strictEqual(request.auth?.token, 'mytoken');
         });
     });
 });
