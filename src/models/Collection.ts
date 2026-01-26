@@ -32,6 +32,7 @@ export interface Request {
     body: RequestBody;
     auth?: AuthConfig;
     disabledInheritedHeaders?: string[];
+    preRequestId?: string;
     createdAt: number;
     updatedAt: number;
 }

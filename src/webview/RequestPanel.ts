@@ -11,6 +11,7 @@ import { ResponseStorage } from '../storage/ResponseStorage';
 import { getGenerator } from '../codegen';
 import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
 import { DirtyStateProvider } from '../providers/DirtyStateProvider';
+import { getLogger } from '../logger';
 
 export class RequestPanel {
     public static currentPanel: RequestPanel | undefined;
@@ -158,10 +159,25 @@ export class RequestPanel {
                     requestData.inheritedAuth = collection.defaultAuth;
                     requestData.useInheritedAuth = true;
                 }
+
+                // Available requests for pre-request selection (exclude current request)
+                requestData.availableRequests = collection.requests
+                    .filter(r => r.id !== request.id)
+                    .map(r => ({ id: r.id, name: r.name }));
             }
         }
 
-        return RequestPanel.createOrShow(extensionUri, requestData, collectionId);
+        const panel = RequestPanel.createOrShow(extensionUri, requestData, collectionId);
+        
+        // Send available requests to the webview
+        if (collectionId && RequestPanel._storageService) {
+            const collection = RequestPanel._storageService.getCollection(collectionId);
+            if (collection) {
+                panel._sendAvailableRequests(collection.requests, request.id);
+            }
+        }
+        
+        return panel;
     }
 
     /**
@@ -219,7 +235,8 @@ export class RequestPanel {
             auth: data.auth,
             body: data.body,
             inheritedHeadersState: data.inheritedHeadersState,
-            useInheritedAuth: data.useInheritedAuth
+            useInheritedAuth: data.useInheritedAuth,
+            preRequestId: data.preRequestId
         };
         return JSON.stringify(normalized);
     }
@@ -530,11 +547,203 @@ export class RequestPanel {
         await responseDisplay.showResponse(this._lastResponse, this._panel.viewColumn);
     }
 
+    /**
+     * Execute a pre-request before the main request
+     * @param preRequestId - The ID of the request to execute
+     * @param visitedIds - Array of request IDs already in the chain (for cycle detection)
+     * @returns true if successful, false if failed
+     */
+    private async _executePreRequest(preRequestId: string, visitedIds: string[]): Promise<boolean> {
+        if (!RequestPanel._storageService || !RequestPanel._httpClient || !RequestPanel._variableService || !this._collectionId) {
+            return false;
+        }
+
+        // Cycle detection
+        if (visitedIds.includes(preRequestId)) {
+            vscode.window.showErrorMessage(vscode.l10n.t('Pre-request cycle detected. Request chain: {0}', visitedIds.join(' → ') + ' → ' + preRequestId));
+            return false;
+        }
+
+        // Get the collection and find the pre-request
+        const collection = RequestPanel._storageService.getCollection(this._collectionId);
+        if (!collection) {
+            vscode.window.showErrorMessage(vscode.l10n.t('Collection not found'));
+            return false;
+        }
+
+        const preRequest = collection.requests.find(r => r.id === preRequestId);
+        if (!preRequest) {
+            vscode.window.showErrorMessage(vscode.l10n.t('Pre-request not found: {0}', preRequestId));
+            return false;
+        }
+
+        // If the pre-request also has a pre-request, execute it first (recursively)
+        if (preRequest.preRequestId) {
+            const nestedResult = await this._executePreRequest(preRequest.preRequestId, [...visitedIds, preRequestId]);
+            if (!nestedResult) {
+                return false;
+            }
+        }
+
+        // Execute the pre-request
+        try {
+            // Show progress for pre-request
+            const displayName = preRequest.name || `${preRequest.method} request`;
+            this._panel.webview.postMessage({
+                type: 'requestStarted',
+                data: { url: preRequest.url, method: preRequest.method, isPreRequest: true, name: displayName }
+            });
+
+            // Build the request with resolved variables
+            const variableService = RequestPanel._variableService!;
+
+            // Resolve headers
+            const resolvedHeaders = await Promise.all(
+                preRequest.headers.filter(h => h.enabled && h.name).map(async h => ({
+                    name: h.name,
+                    value: await variableService.resolveText(h.value, this._collectionId),
+                    enabled: true
+                }))
+            );
+
+            // Handle auth
+            const auth = preRequest.auth || collection.defaultAuth;
+            let resolvedUrl = await variableService.resolveText(preRequest.url, this._collectionId);
+            
+            if (auth && auth.type === 'basic' && auth.username) {
+                const username = await variableService.resolveText(auth.username, this._collectionId);
+                const password = await variableService.resolveText(auth.password || '', this._collectionId);
+                const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+                resolvedHeaders.push({ name: 'Authorization', value: `Basic ${credentials}`, enabled: true });
+            } else if (auth && auth.type === 'bearer' && auth.token) {
+                const token = await variableService.resolveText(auth.token, this._collectionId);
+                resolvedHeaders.push({ name: 'Authorization', value: `Bearer ${token}`, enabled: true });
+            } else if (auth && auth.type === 'apikey' && auth.apiKeyName) {
+                const keyValue = await variableService.resolveText(auth.apiKeyValue || '', this._collectionId);
+                if (auth.apiKeyIn === 'header') {
+                    resolvedHeaders.push({ name: auth.apiKeyName, value: keyValue, enabled: true });
+                } else {
+                    // Add to query params
+                    const separator = resolvedUrl.includes('?') ? '&' : '?';
+                    resolvedUrl += `${separator}${encodeURIComponent(auth.apiKeyName)}=${encodeURIComponent(keyValue)}`;
+                }
+            }
+
+            // Resolve body and add Content-Type header
+            let resolvedBody: string | undefined;
+            
+            if (preRequest.body && preRequest.body.type !== 'none' && preRequest.body.content) {
+                // Handle form data - convert from JSON array to URL-encoded string
+                if (preRequest.body.type === 'form') {
+                    try {
+                        const formData = JSON.parse(preRequest.body.content);
+                        const params = new URLSearchParams();
+                        for (const f of formData.filter((field: any) => field.enabled && field.key)) {
+                            const resolvedKey = await variableService.resolveText(f.key, this._collectionId);
+                            const resolvedValue = await variableService.resolveText(f.value, this._collectionId);
+                            params.append(resolvedKey, resolvedValue);
+                        }
+                        resolvedBody = params.toString();
+                    } catch (e) {
+                        getLogger().error(`Failed to parse form data for pre-request`);
+                        resolvedBody = await variableService.resolveText(preRequest.body.content, this._collectionId);
+                    }
+                } else {
+                    resolvedBody = await variableService.resolveText(preRequest.body.content, this._collectionId);
+                }
+                
+                // Add Content-Type header if not already present
+                const hasContentType = resolvedHeaders.some(h => h.name.toLowerCase() === 'content-type');
+                if (!hasContentType) {
+                    const contentTypeMap: Record<string, string> = {
+                        json: 'application/json',
+                        xml: 'application/xml',
+                        form: 'application/x-www-form-urlencoded',
+                        text: 'text/plain',
+                    };
+                    const contentType = contentTypeMap[preRequest.body.type];
+                    if (contentType) {
+                        resolvedHeaders.push({ name: 'Content-Type', value: contentType, enabled: true });
+                    }
+                }
+            }
+
+            // Build request object
+            const requestObj: Request = {
+                id: preRequest.id,
+                name: preRequest.name,
+                method: preRequest.method,
+                url: resolvedUrl,
+                headers: resolvedHeaders,
+                body: resolvedBody ? { type: preRequest.body.type, content: resolvedBody } : { type: 'none', content: '' },
+                createdAt: preRequest.createdAt,
+                updatedAt: preRequest.updatedAt
+            };
+
+            // Execute with progress
+            const response = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Window,
+                    title: vscode.l10n.t('$(sync~spin) Running pre-request: {0}...', displayName)
+                },
+                async () => RequestPanel._httpClient!.executeRequest(requestObj)
+            );
+
+            // Store response for request chaining
+            if (preRequest.name) {
+                const responseStorage = ResponseStorage.getInstance();
+                responseStorage.storeResponse(preRequest.name, response);
+                getLogger().info(`Pre-request "${preRequest.name}" completed with status ${response.status}`);
+            } else {
+                getLogger().warn('Pre-request has no name - response will not be available for variable chaining');
+            }
+
+            // Check if the pre-request was successful (2xx status codes)
+            if (response.status >= 200 && response.status < 300) {
+                return true;
+            } else {
+                // For 4xx/5xx errors, ask user whether to continue
+                const result = await vscode.window.showWarningMessage(
+                    vscode.l10n.t('Pre-request "{0}" failed with status {1}. Continue anyway?', preRequest.name, response.status),
+                    { modal: true },
+                    vscode.l10n.t('Continue'),
+                    vscode.l10n.t('Abort')
+                );
+                
+                if (result === vscode.l10n.t('Continue')) {
+                    getLogger().warn(`User chose to continue despite pre-request failure (status ${response.status})`);
+                    return true;
+                } else {
+                    getLogger().info(`User aborted main request after pre-request failure (status ${response.status})`);
+                    return false;
+                }
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            vscode.window.showErrorMessage(vscode.l10n.t('Pre-request "{0}" failed: {1}', preRequest.name, errorMessage));
+            return false;
+        }
+    }
+
     private async _sendRequest(data: RequestData): Promise<void> {
+        const logger = getLogger();
+        
         // Check if services are initialized
         if (!RequestPanel._httpClient || !RequestPanel._variableService || !RequestPanel._storageService) {
             vscode.window.showErrorMessage(vscode.l10n.t('HTTP Client not initialized. Please reload the extension.'));
             return;
+        }
+
+        // Execute pre-request if configured
+        if (data.preRequestId && this._collectionId) {
+            logger.info(`Executing pre-request before main request`);
+            const preRequestResult = await this._executePreRequest(data.preRequestId, [data.id || '']);
+            if (!preRequestResult) {
+                logger.warn('Pre-request failed or was aborted');
+                // Pre-request failed, abort the main request
+                return;
+            }
+            logger.info('Pre-request completed, proceeding with main request');
         }
 
         // Get collection defaults if available
@@ -781,6 +990,7 @@ export class RequestPanel {
                         body: data.body,
                         auth: data.auth,
                         disabledInheritedHeaders: disabledInheritedHeaders.length > 0 ? disabledInheritedHeaders : undefined,
+                        preRequestId: data.preRequestId || undefined,
                         updatedAt: Date.now()
                     };
                     collection.updatedAt = Date.now();
@@ -853,6 +1063,7 @@ export class RequestPanel {
                 body: data.body,
                 auth: data.auth,
                 disabledInheritedHeaders: disabledInheritedHeaders.length > 0 ? disabledInheritedHeaders : undefined,
+                preRequestId: data.preRequestId || undefined,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
             };
@@ -888,6 +1099,19 @@ export class RequestPanel {
             this._extensionUri,
             this._requestData
         );
+    }
+
+    /**
+     * Send available requests list to webview for pre-request selection
+     */
+    private _sendAvailableRequests(requests: Request[], currentRequestId?: string): void {
+        this._panel.webview.postMessage({
+            type: 'updateAvailableRequests',
+            data: {
+                requests: requests.map(r => ({ id: r.id, name: r.name })),
+                currentRequestId
+            }
+        });
     }
 
     /**

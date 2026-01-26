@@ -16,6 +16,8 @@ export interface RequestData {
     useInheritedAuth?: boolean;
     auth: AuthConfig;
     body: RequestBody;
+    preRequestId?: string;
+    availableRequests?: { id: string; name: string }[];
 }
 
 export function getDefaultRequestData(): RequestData {
@@ -51,7 +53,8 @@ export function requestToRequestData(request: Request): RequestData {
         queryParams,
         headers: request.headers.map(h => ({ key: h.name, value: h.value, enabled: h.enabled })),
         auth: request.auth || { type: 'none' },
-        body: request.body
+        body: request.body,
+        preRequestId: request.preRequestId
     };
 }
 
@@ -113,6 +116,7 @@ export function generateRequestPanelHtml(
         <vscode-tab-header slot="header">Headers</vscode-tab-header>
         <vscode-tab-header slot="header">Auth</vscode-tab-header>
         <vscode-tab-header slot="header">Body</vscode-tab-header>
+        <vscode-tab-header slot="header">Settings</vscode-tab-header>
 
         <!-- Query Params Tab -->
         <vscode-tab-panel>
@@ -307,6 +311,28 @@ export function generateRequestPanelHtml(
                 </div>
             </div>
         </vscode-tab-panel>
+
+        <!-- Settings Tab -->
+        <vscode-tab-panel>
+            <div class="settings-section">
+                <div class="pre-request-section">
+                    <h4>Pre-Request</h4>
+                    <p class="section-description">Execute another request before this one runs. Useful for authentication or setup requests.</p>
+                    <div class="pre-request-toggle">
+                        <vscode-checkbox id="enablePreRequest" ${data.preRequestId ? 'checked' : ''}>
+                            Execute another request first
+                        </vscode-checkbox>
+                    </div>
+                    <div class="pre-request-select" id="preRequestSelectContainer" style="${data.preRequestId ? '' : 'display: none;'}">
+                        <label>Request to run first:</label>
+                        <vscode-single-select id="preRequestSelect">
+                            <vscode-option value="">-- Select a request --</vscode-option>
+                            ${renderAvailableRequestOptions(data.availableRequests || [], data.preRequestId)}
+                        </vscode-single-select>
+                    </div>
+                </div>
+            </div>
+        </vscode-tab-panel>
     </vscode-tabs>
 
     <!-- Response Section -->
@@ -498,6 +524,14 @@ export function generateRequestPanelHtml(
                     bodyContent = document.getElementById('bodyXmlContent').value;
                 }
 
+                // Collect pre-request settings
+                const enablePreRequest = document.getElementById('enablePreRequest');
+                const preRequestSelect = document.getElementById('preRequestSelect');
+                let preRequestId = null;
+                if (enablePreRequest && enablePreRequest.checked && preRequestSelect) {
+                    preRequestId = preRequestSelect.value || null;
+                }
+
                 return {
                     id: requestData.id,
                     name: requestData.name,
@@ -510,7 +544,8 @@ export function generateRequestPanelHtml(
                     inheritedAuth: inheritedAuth,
                     useInheritedAuth: useInheritedAuth,
                     auth,
-                    body: { type: bodyType, content: bodyContent }
+                    body: { type: bodyType, content: bodyContent },
+                    preRequestId: preRequestId
                 };
             }
 
@@ -634,6 +669,24 @@ export function generateRequestPanelHtml(
                         document.getElementById('bodyTextContent').value = state.body.content;
                     } else if (bodyType === 'xml' && state.body.content) {
                         document.getElementById('bodyXmlContent').value = state.body.content;
+                    }
+                }
+                
+                // Restore pre-request settings
+                const enablePreRequest = document.getElementById('enablePreRequest');
+                const preRequestSelectContainer = document.getElementById('preRequestSelectContainer');
+                const preRequestSelect = document.getElementById('preRequestSelect');
+                
+                if (enablePreRequest && preRequestSelectContainer) {
+                    if (state.preRequestId) {
+                        enablePreRequest.checked = true;
+                        preRequestSelectContainer.style.display = '';
+                        if (preRequestSelect) {
+                            preRequestSelect.value = state.preRequestId;
+                        }
+                    } else {
+                        enablePreRequest.checked = false;
+                        preRequestSelectContainer.style.display = 'none';
                     }
                 }
             }
@@ -797,6 +850,24 @@ export function generateRequestPanelHtml(
                 });
                 // Initialize state on load
                 updateAuthSectionState();
+            }
+
+            // Pre-request checkbox handler
+            const enablePreRequestCheckbox = document.getElementById('enablePreRequest');
+            if (enablePreRequestCheckbox) {
+                enablePreRequestCheckbox.addEventListener('change', () => {
+                    const preRequestSelectContainer = document.getElementById('preRequestSelectContainer');
+                    if (preRequestSelectContainer) {
+                        preRequestSelectContainer.style.display = enablePreRequestCheckbox.checked ? '' : 'none';
+                    }
+                    saveState();
+                });
+            }
+            
+            // Pre-request select change handler
+            const preRequestSelect = document.getElementById('preRequestSelect');
+            if (preRequestSelect) {
+                preRequestSelect.addEventListener('change', saveState);
             }
 
             // Secret field show/hide toggle
@@ -993,6 +1064,27 @@ export function generateRequestPanelHtml(
                         const indicator = document.getElementById('dirtyIndicator');
                         if (indicator) {
                             indicator.classList.toggle('visible', message.isDirty);
+                        }
+                        break;
+                    case 'updateAvailableRequests':
+                        // Update the pre-request dropdown with available requests
+                        const preReqSelect = document.getElementById('preRequestSelect');
+                        if (preReqSelect && message.data) {
+                            const requests = message.data.requests || [];
+                            const currentRequestId = message.data.currentRequestId;
+                            // Filter out the current request (can't run yourself first)
+                            const filteredRequests = requests.filter(r => r.id !== currentRequestId);
+                            
+                            let optionsHtml = '<vscode-option value="">-- Select a request --</vscode-option>';
+                            if (filteredRequests.length === 0) {
+                                optionsHtml += '<vscode-option value="" disabled>No other requests in this collection</vscode-option>';
+                            } else {
+                                filteredRequests.forEach(req => {
+                                    const selected = req.id === requestData.preRequestId ? 'selected' : '';
+                                    optionsHtml += '<vscode-option value="' + escapeHtmlInJs(req.id) + '" ' + selected + '>' + escapeHtmlInJs(req.name) + '</vscode-option>';
+                                });
+                            }
+                            preReqSelect.innerHTML = optionsHtml;
                         }
                         break;
                 }
@@ -1533,4 +1625,14 @@ function renderInheritedAuth(auth: AuthConfig | undefined): string {
         default:
             return '';
     }
+}
+
+function renderAvailableRequestOptions(requests: { id: string; name: string }[], selectedId?: string): string {
+    if (!requests || requests.length === 0) {
+        return '<vscode-option value="" disabled>No other requests in this collection</vscode-option>';
+    }
+
+    return requests.map(req => 
+        `<vscode-option value="${escapeHtml(req.id)}" ${req.id === selectedId ? 'selected' : ''}>${escapeHtml(req.name)}</vscode-option>`
+    ).join('');
 }

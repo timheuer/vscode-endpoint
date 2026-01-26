@@ -240,8 +240,12 @@ export class HttpClient {
                         time: responseTime + 'ms',
                         size: rawSize + ' bytes'
                     });
+                    // Mask sensitive values in trace output
+                    const maskedBody = bodyString
+                        .replace(/"(access_token|token|refresh_token|id_token|bearer|api_key|apikey|secret|password|authorization)"\s*:\s*"[^"]+"/gi, '"$1": "[MASKED]"')
+                        .replace(/(Bearer\s+)[A-Za-z0-9\-_]+\.?[A-Za-z0-9\-_]*\.?[A-Za-z0-9\-_]*/gi, '$1[MASKED]');
                     logger.trace('Response body preview', {
-                        body: bodyString.substring(0, 500) + (bodyString.length > 500 ? '...' : '')
+                        body: maskedBody.substring(0, 500) + (maskedBody.length > 500 ? '...' : '')
                     });
 
                     resolve(response);
