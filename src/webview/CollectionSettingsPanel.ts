@@ -137,7 +137,7 @@ export class CollectionSettingsPanel {
         const codiconsUri = getCodiconsUri(this._panel.webview, this._extensionUri);
         const sharedCssUri = getSharedCssUri(this._panel.webview, this._extensionUri);
         const collectionSettingsCssUri = getCollectionSettingsCssUri(this._panel.webview, this._extensionUri);
-        const extensionVersion = vscode.extensions.getExtension('timheuer.endpoint')?.packageJSON.version ?? '1.0.0';
+        const extensionVersion = vscode.extensions.getExtension('timheuer.vscode-endpoint')?.packageJSON.version ?? '';
 
         const headers = this._collection.defaultHeaders || [];
         const auth = this._collection.defaultAuth || { type: 'none' as AuthType };
