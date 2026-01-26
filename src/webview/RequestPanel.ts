@@ -120,6 +120,9 @@ export class RequestPanel {
             }
         );
 
+        // Set tab icon
+        panel.iconPath = new vscode.ThemeIcon('symbol-method');
+
         const requestPanel = new RequestPanel(panel, extensionUri, data, collectionId);
 
         if (data.id) {
@@ -168,7 +171,7 @@ export class RequestPanel {
         }
 
         const panel = RequestPanel.createOrShow(extensionUri, requestData, collectionId);
-        
+
         // Send available requests to the webview
         if (collectionId && RequestPanel._storageService) {
             const collection = RequestPanel._storageService.getCollection(collectionId);
@@ -176,7 +179,7 @@ export class RequestPanel {
                 panel._sendAvailableRequests(collection.requests, request.id);
             }
         }
-        
+
         return panel;
     }
 
@@ -609,7 +612,7 @@ export class RequestPanel {
             // Handle auth
             const auth = preRequest.auth || collection.defaultAuth;
             let resolvedUrl = await variableService.resolveText(preRequest.url, this._collectionId);
-            
+
             if (auth && auth.type === 'basic' && auth.username) {
                 const username = await variableService.resolveText(auth.username, this._collectionId);
                 const password = await variableService.resolveText(auth.password || '', this._collectionId);
@@ -631,7 +634,7 @@ export class RequestPanel {
 
             // Resolve body and add Content-Type header
             let resolvedBody: string | undefined;
-            
+
             if (preRequest.body && preRequest.body.type !== 'none' && preRequest.body.content) {
                 // Handle form data - convert from JSON array to URL-encoded string
                 if (preRequest.body.type === 'form') {
@@ -651,7 +654,7 @@ export class RequestPanel {
                 } else {
                     resolvedBody = await variableService.resolveText(preRequest.body.content, this._collectionId);
                 }
-                
+
                 // Add Content-Type header if not already present
                 const hasContentType = resolvedHeaders.some(h => h.name.toLowerCase() === 'content-type');
                 if (!hasContentType) {
@@ -709,7 +712,7 @@ export class RequestPanel {
                     vscode.l10n.t('Continue'),
                     vscode.l10n.t('Abort')
                 );
-                
+
                 if (result === vscode.l10n.t('Continue')) {
                     getLogger().warn(`User chose to continue despite pre-request failure (status ${response.status})`);
                     return true;
@@ -727,7 +730,7 @@ export class RequestPanel {
 
     private async _sendRequest(data: RequestData): Promise<void> {
         const logger = getLogger();
-        
+
         // Check if services are initialized
         if (!RequestPanel._httpClient || !RequestPanel._variableService || !RequestPanel._storageService) {
             vscode.window.showErrorMessage(vscode.l10n.t('HTTP Client not initialized. Please reload the extension.'));
