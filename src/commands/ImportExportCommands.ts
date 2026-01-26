@@ -42,6 +42,25 @@ function extractVariablesFromRequests(requests: Request[]): Set<string> {
         if (request.body?.content) {
             extractVariableNames(request.body.content).forEach(v => variables.add(v));
         }
+
+        // Check auth config
+        if (request.auth) {
+            if (request.auth.token) {
+                extractVariableNames(request.auth.token).forEach(v => variables.add(v));
+            }
+            if (request.auth.username) {
+                extractVariableNames(request.auth.username).forEach(v => variables.add(v));
+            }
+            if (request.auth.password) {
+                extractVariableNames(request.auth.password).forEach(v => variables.add(v));
+            }
+            if (request.auth.apiKeyValue) {
+                extractVariableNames(request.auth.apiKeyValue).forEach(v => variables.add(v));
+            }
+            if (request.auth.apiKeyName) {
+                extractVariableNames(request.auth.apiKeyName).forEach(v => variables.add(v));
+            }
+        }
     }
 
     return variables;
