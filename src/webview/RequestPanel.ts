@@ -145,10 +145,11 @@ export class RequestPanel {
                     requestData.inheritedHeaders = collection.defaultHeaders
                         .filter(h => h.name) // Only include headers with names
                         .map(h => ({ key: h.name, value: h.value }));
-                    // Default all inherited headers to enabled
+                    // Restore inherited headers state from saved disabled list
                     requestData.inheritedHeadersState = {};
+                    const disabledSet = new Set(request.disabledInheritedHeaders || []);
                     requestData.inheritedHeaders.forEach(h => {
-                        requestData.inheritedHeadersState![h.key] = true;
+                        requestData.inheritedHeadersState![h.key] = !disabledSet.has(h.key);
                     });
                 }
 
@@ -760,6 +761,16 @@ export class RequestPanel {
                         url += (url.includes('?') ? '&' : '?') + searchParams.toString();
                     }
 
+                    // Build list of disabled inherited headers from state
+                    const disabledInheritedHeaders: string[] = [];
+                    if (data.inheritedHeadersState) {
+                        for (const [key, enabled] of Object.entries(data.inheritedHeadersState)) {
+                            if (!enabled) {
+                                disabledInheritedHeaders.push(key);
+                            }
+                        }
+                    }
+
                     // Update the request in the collection
                     collection.requests[requestIndex] = {
                         ...collection.requests[requestIndex],
@@ -769,6 +780,7 @@ export class RequestPanel {
                         headers: data.headers.map(h => ({ name: h.key, value: h.value, enabled: h.enabled })),
                         body: data.body,
                         auth: data.auth,
+                        disabledInheritedHeaders: disabledInheritedHeaders.length > 0 ? disabledInheritedHeaders : undefined,
                         updatedAt: Date.now()
                     };
                     collection.updatedAt = Date.now();
@@ -822,6 +834,16 @@ export class RequestPanel {
                 url += (url.includes('?') ? '&' : '?') + searchParams.toString();
             }
 
+            // Build list of disabled inherited headers from state
+            const disabledInheritedHeaders: string[] = [];
+            if (data.inheritedHeadersState) {
+                for (const [key, enabled] of Object.entries(data.inheritedHeadersState)) {
+                    if (!enabled) {
+                        disabledInheritedHeaders.push(key);
+                    }
+                }
+            }
+
             const newRequest = {
                 id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 name: data.name || 'New Request',
@@ -830,6 +852,7 @@ export class RequestPanel {
                 headers: data.headers.map(h => ({ name: h.key, value: h.value, enabled: h.enabled })),
                 body: data.body,
                 auth: data.auth,
+                disabledInheritedHeaders: disabledInheritedHeaders.length > 0 ? disabledInheritedHeaders : undefined,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
             };
