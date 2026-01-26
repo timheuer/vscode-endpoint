@@ -465,7 +465,29 @@ export class RequestPanel {
         // Add body if present
         if (data.body && data.body.type !== 'none' && data.body.content) {
             let content = data.body.content;
-            if (resolveVariables && RequestPanel._variableService) {
+
+            // Handle form data: convert JSON array to URL-encoded string
+            if (data.body.type === 'form') {
+                try {
+                    const formData = JSON.parse(data.body.content);
+                    const params = new URLSearchParams();
+                    for (const f of formData.filter((field: any) => field.enabled && field.key)) {
+                        let key = f.key;
+                        let value = f.value;
+                        if (resolveVariables && RequestPanel._variableService) {
+                            key = await RequestPanel._variableService.resolveText(key, this._collectionId);
+                            value = await RequestPanel._variableService.resolveText(value, this._collectionId);
+                        }
+                        params.append(key, value);
+                    }
+                    content = params.toString();
+                } catch {
+                    // Use content as-is if parsing fails
+                    if (resolveVariables && RequestPanel._variableService) {
+                        content = await RequestPanel._variableService.resolveText(content, this._collectionId);
+                    }
+                }
+            } else if (resolveVariables && RequestPanel._variableService) {
                 content = await RequestPanel._variableService.resolveText(content, this._collectionId);
             }
 
@@ -589,12 +611,16 @@ export class RequestPanel {
             } else if (data.body.type === 'form' && !headers['Content-Type']) {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
                 // Convert form data to URL encoded string
+                // Variables must be resolved BEFORE URL encoding, otherwise {{...}} becomes %7B%7B...%7D%7D
                 try {
                     const formData = JSON.parse(data.body.content);
                     const params = new URLSearchParams();
-                    formData.filter((f: any) => f.enabled && f.key).forEach((f: any) => {
-                        params.append(f.key, f.value);
-                    });
+                    const variableService = RequestPanel._variableService!;
+                    for (const f of formData.filter((field: any) => field.enabled && field.key)) {
+                        const resolvedKey = await variableService.resolveText(f.key, this._collectionId);
+                        const resolvedValue = await variableService.resolveText(f.value, this._collectionId);
+                        params.append(resolvedKey, resolvedValue);
+                    }
                     body = params.toString();
                 } catch {
                     // Use content as-is

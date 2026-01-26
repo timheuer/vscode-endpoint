@@ -35,7 +35,13 @@ Build any HTTP request with an intuitive tabbed interface:
 
 ### 🔗 Request Chaining
 
-Chain requests together — grab a token from one response and use it in the next:
+Chain requests together — grab a token from one response and use it in the next.
+
+**How to use:**
+
+1. **Name your first request** — Enter a name in the "Name" field (e.g., `login`)
+2. **Send the request** — The response is automatically stored in memory
+3. **Reference in the next request** — Use `{{requestName.response.body.path}}` in URL, headers, or body
 
 ```http
 ### Login
@@ -57,6 +63,8 @@ Authorization: Bearer {{login.response.body.token}}
 | `{{name.response.body.data[0].id}}` | Array access |
 | `{{name.response.headers.X-Custom}}` | Header value |
 | `{{name.response.status}}` | Status code |
+
+> **Note:** Responses are session-scoped and cleared when VS Code restarts.
 
 ### 🌍 Smart Variables
 
