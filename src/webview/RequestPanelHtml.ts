@@ -71,6 +71,15 @@ export function generateRequestPanelHtml(
 
     const data = requestData || getDefaultRequestData();
 
+    // Calculate initial counts for tab badges
+    const queryParamsCount = data.queryParams.filter(p => p.enabled && p.key.trim()).length;
+    const requestHeadersCount = data.headers.filter(h => h.enabled && h.key.trim()).length;
+    const inheritedHeadersCount = (data.inheritedHeaders || []).filter(h => {
+        const state = data.inheritedHeadersState || {};
+        return state[h.key] !== false; // Default to enabled if not explicitly disabled
+    }).length;
+    const totalHeadersCount = requestHeadersCount + inheritedHeadersCount;
+
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -112,8 +121,8 @@ export function generateRequestPanelHtml(
     </div>
 
     <vscode-tabs id="requestTabs" selected-index="0">
-        <vscode-tab-header slot="header">Query Params</vscode-tab-header>
-        <vscode-tab-header slot="header">Headers</vscode-tab-header>
+        <vscode-tab-header slot="header">Query Params${queryParamsCount > 0 ? ` <span class="tab-badge" id="queryParamsCount">${queryParamsCount}</span>` : ' <span class="tab-badge" id="queryParamsCount" style="display:none"></span>'}</vscode-tab-header>
+        <vscode-tab-header slot="header">Headers${totalHeadersCount > 0 ? ` <span class="tab-badge" id="reqHeadersCount">${totalHeadersCount}</span>` : ' <span class="tab-badge" id="reqHeadersCount" style="display:none"></span>'}</vscode-tab-header>
         <vscode-tab-header slot="header">Auth</vscode-tab-header>
         <vscode-tab-header slot="header">Body</vscode-tab-header>
         <vscode-tab-header slot="header">Settings</vscode-tab-header>
@@ -359,8 +368,8 @@ export function generateRequestPanelHtml(
         
         <vscode-tabs class="response-tabs" id="responseTabs" selected-index="0">
             <vscode-tab-header slot="header">Response</vscode-tab-header>
-            <vscode-tab-header slot="header">Headers <span class="tab-badge" id="headersCount">0</span></vscode-tab-header>
-            <vscode-tab-header slot="header">Cookies <span class="tab-badge" id="cookiesCount">0</span></vscode-tab-header>
+            <vscode-tab-header slot="header">Headers <span class="tab-badge" id="headersCount" style="display:none">0</span></vscode-tab-header>
+            <vscode-tab-header slot="header">Cookies <span class="tab-badge" id="cookiesCount" style="display:none">0</span></vscode-tab-header>
             <vscode-tab-header slot="header">Raw</vscode-tab-header>
             <vscode-tab-header slot="header">Code Snippet</vscode-tab-header>
 
@@ -474,6 +483,61 @@ export function generateRequestPanelHtml(
                 
                 // Notify extension of content change for dirty state tracking
                 vscode.postMessage({ type: 'contentChanged', data: state });
+                
+                // Update tab counts
+                updateTabCounts();
+            }
+            
+            function updateTabCounts() {
+                // Count enabled query params with non-empty keys
+                const queryParamsBody = document.getElementById('queryParamsBody');
+                let queryParamsCount = 0;
+                if (queryParamsBody) {
+                    queryParamsBody.querySelectorAll('.key-value-row').forEach(row => {
+                        const checkbox = row.querySelector('vscode-checkbox');
+                        const keyField = row.querySelector('[data-field="key"]');
+                        if (checkbox && checkbox.checked && keyField && keyField.value.trim()) {
+                            queryParamsCount++;
+                        }
+                    });
+                }
+                
+                // Count enabled request headers with non-empty keys
+                const headersBody = document.getElementById('headersBody');
+                let headersCount = 0;
+                if (headersBody) {
+                    headersBody.querySelectorAll('.key-value-row').forEach(row => {
+                        const checkbox = row.querySelector('vscode-checkbox');
+                        const keyField = row.querySelector('[data-field="key"]');
+                        if (checkbox && checkbox.checked && keyField && keyField.value.trim()) {
+                            headersCount++;
+                        }
+                    });
+                }
+                
+                // Count enabled inherited headers
+                const inheritedHeadersBody = document.getElementById('inheritedHeadersBody');
+                if (inheritedHeadersBody) {
+                    inheritedHeadersBody.querySelectorAll('.key-value-row').forEach(row => {
+                        const checkbox = row.querySelector('vscode-checkbox');
+                        if (checkbox && checkbox.checked) {
+                            headersCount++;
+                        }
+                    });
+                }
+                
+                // Update count displays
+                const queryCountEl = document.getElementById('queryParamsCount');
+                const headerCountEl = document.getElementById('reqHeadersCount');
+                
+                if (queryCountEl) {
+                    queryCountEl.textContent = queryParamsCount > 0 ? queryParamsCount : '';
+                    queryCountEl.style.display = queryParamsCount > 0 ? '' : 'none';
+                }
+                if (headerCountEl) {
+                    headerCountEl.textContent = headersCount > 0 ? headersCount : '';
+                    headerCountEl.style.display = headersCount > 0 ? '' : 'none';
+                }
             }
 
             function collectRequestData() {
@@ -689,6 +753,9 @@ export function generateRequestPanelHtml(
                         preRequestSelectContainer.style.display = 'none';
                     }
                 }
+                
+                // Update tab counts after restore
+                updateTabCounts();
             }
             
             function restoreInheritedHeadersState(headers, state) {
@@ -1392,7 +1459,9 @@ export function generateRequestPanelHtml(
                 // Headers tab
                 const headers = response.headers || {};
                 const headerEntries = Object.entries(headers);
-                document.getElementById('headersCount').textContent = headerEntries.length;
+                const headersCountEl = document.getElementById('headersCount');
+                headersCountEl.textContent = headerEntries.length;
+                headersCountEl.style.display = headerEntries.length > 0 ? '' : 'none';
                 
                 const headersBody = document.getElementById('responseHeadersBody');
                 headersBody.innerHTML = headerEntries.map(([name, value]) => 
@@ -1422,6 +1491,7 @@ export function generateRequestPanelHtml(
                 }
                 
                 document.getElementById('cookiesCount').textContent = cookies.length;
+                document.getElementById('cookiesCount').style.display = cookies.length > 0 ? '' : 'none';
                 const cookiesBody = document.getElementById('responseCookiesBody');
                 const noCookies = document.getElementById('noCookies');
                 
@@ -1466,7 +1536,9 @@ export function generateRequestPanelHtml(
                 document.getElementById('responseBody').textContent = error;
                 document.getElementById('responseRaw').textContent = error;
                 document.getElementById('headersCount').textContent = '0';
+                document.getElementById('headersCount').style.display = 'none';
                 document.getElementById('cookiesCount').textContent = '0';
+                document.getElementById('cookiesCount').style.display = 'none';
                 document.getElementById('responseHeadersBody').innerHTML = '';
                 document.getElementById('responseCookiesBody').innerHTML = '';
                 document.getElementById('noCookies').style.display = 'block';
@@ -1632,7 +1704,7 @@ function renderAvailableRequestOptions(requests: { id: string; name: string }[],
         return '<vscode-option value="" disabled>No other requests in this collection</vscode-option>';
     }
 
-    return requests.map(req => 
+    return requests.map(req =>
         `<vscode-option value="${escapeHtml(req.id)}" ${req.id === selectedId ? 'selected' : ''}>${escapeHtml(req.name)}</vscode-option>`
     ).join('');
 }
