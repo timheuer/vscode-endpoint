@@ -696,7 +696,7 @@ export class RequestPanel {
             if (preRequest.name) {
                 const responseStorage = ResponseStorage.getInstance();
                 responseStorage.storeResponse(preRequest.name, response);
-                getLogger().info(`Pre-request "${preRequest.name}" completed with status ${response.status}`);
+                getLogger().debug(`Pre-request "${preRequest.name}" completed with status ${response.status}`);
             } else {
                 getLogger().warn('Pre-request has no name - response will not be available for variable chaining');
             }
@@ -717,7 +717,7 @@ export class RequestPanel {
                     getLogger().warn(`User chose to continue despite pre-request failure (status ${response.status})`);
                     return true;
                 } else {
-                    getLogger().info(`User aborted main request after pre-request failure (status ${response.status})`);
+                    getLogger().debug(`User aborted main request after pre-request failure (status ${response.status})`);
                     return false;
                 }
             }
@@ -739,14 +739,14 @@ export class RequestPanel {
 
         // Execute pre-request if configured
         if (data.preRequestId && this._collectionId) {
-            logger.info(`Executing pre-request before main request`);
+            logger.debug(`Executing pre-request before main request`);
             const preRequestResult = await this._executePreRequest(data.preRequestId, [data.id || '']);
             if (!preRequestResult) {
                 logger.warn('Pre-request failed or was aborted');
                 // Pre-request failed, abort the main request
                 return;
             }
-            logger.info('Pre-request completed, proceeding with main request');
+            logger.debug('Pre-request completed, proceeding with main request');
         }
 
         // Get collection defaults if available

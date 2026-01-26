@@ -28,6 +28,8 @@ import langHtml from '@shikijs/langs/html';
 // @ts-expect-error shiki is ESM-only, but esbuild handles the conversion
 import langCss from '@shikijs/langs/css';
 
+import { getLogger } from '../logger';
+
 // Language mapping for code generators
 const LANGUAGE_MAP: Record<string, string> = {
     'curl': 'bash',
@@ -101,7 +103,7 @@ export class SyntaxHighlighter {
             return html;
         } catch (error) {
             // Fallback to escaped plain text if highlighting fails
-            console.error('Shiki highlighting failed:', error);
+            getLogger().debug('Shiki highlighting failed, using fallback', { error });
             return this.escapeHtml(code);
         }
     }

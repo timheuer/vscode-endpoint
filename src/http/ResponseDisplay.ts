@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { HttpResponse, ResponseContentProvider } from './ResponseContentProvider';
+import { getLogger } from '../logger';
 
 /**
  * Manages the display of HTTP responses in VS Code editors
@@ -173,7 +174,7 @@ export class ResponseDisplay {
 
         } catch (error) {
             // Fallback: just open in a new column
-            console.error('Failed to split editor:', error);
+            getLogger().debug('Failed to split editor, using fallback', { error });
             const doc = await vscode.workspace.openTextDocument(uri);
             await vscode.window.showTextDocument(doc, {
                 viewColumn: vscode.ViewColumn.Beside,

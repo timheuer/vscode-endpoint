@@ -152,7 +152,7 @@ export function createCopyAsCodeCommand(
         const logger = getLogger();
         const { request, collectionId } = requestItem;
 
-        logger.info(`Copy as Code: ${request.method} ${request.url}`);
+        logger.debug(`Copy as Code: ${request.method} ${request.url}`);
 
         // Get available generators
         const generators = getGenerators();
@@ -207,7 +207,7 @@ export function createCopyAsCodeCommand(
             await vscode.env.clipboard.writeText(code);
 
             vscode.window.showInformationMessage(vscode.l10n.t('Copied {0} code to clipboard.', selectedLanguage.label));
-            logger.info(`Generated ${selectedLanguage.label} code and copied to clipboard`);
+            logger.debug(`Generated ${selectedLanguage.label} code and copied to clipboard`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Failed to generate code: ${errorMessage}`);
@@ -388,7 +388,7 @@ export async function handleWebviewCopyAsCode(
         await vscode.env.clipboard.writeText(code);
 
         vscode.window.showInformationMessage(vscode.l10n.t('Copied {0} code to clipboard.', selectedLanguage.label));
-        logger.info(`Generated ${selectedLanguage.label} code from webview and copied to clipboard`);
+        logger.debug(`Generated ${selectedLanguage.label} code from webview and copied to clipboard`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(`Failed to generate code: ${errorMessage}`);
