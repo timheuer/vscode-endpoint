@@ -2,12 +2,12 @@ name: Build and Publish
 
 on:
     workflow_dispatch:
-        branches:
-            - main
-        paths-ignore:
-            - "**/*.md"
-            - "**/*.gitignore"
-            - "**/*.gitattributes"
+        inputs:
+            publish:
+                description: "Publish to VS Code Marketplace"
+                required: false
+                type: boolean
+                default: false
     push:
         branches:
             - main
@@ -60,13 +60,13 @@ jobs:
                   vsce package -o ./${{ github.event.repository.name}}.vsix
 
             - name: 📰 Publish
-              if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+              if: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)) && github.ref == 'refs/heads/main' }}
               run: npm run deploy
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
             - name: 🔗 Marketplace Link
-              if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+              if: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)) && github.ref == 'refs/heads/main' }}
               shell: pwsh
               run: |
                   Write-Host "::notice::Published to VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=timheuer.vscode-endpoint"
