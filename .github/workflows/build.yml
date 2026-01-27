@@ -12,7 +12,8 @@ on:
         branches:
             - main
         paths-ignore:
-            - "**/*.md"
+            - "docs/**/*.md"
+            - ".github/**/*.md"
             - "**/*.gitignore"
             - "**/*.gitattributes"
 
