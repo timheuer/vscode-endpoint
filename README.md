@@ -30,9 +30,21 @@ Build any HTTP request with an intuitive tabbed interface:
 - **Methods**: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
 - **Query Params**: Visual key-value editor
 - **Headers**: Add, remove, enable/disable with toggles
-- **Auth**: None, Basic, Bearer Token, API Key
+- **Auth**: None, Basic, Bearer Token, API Key (header or query param)
 - **Body**: JSON, Form Data, Raw Text, XML
 - **Resizable Split Pane**: Drag the divider between request and response to customize your view
+- **Response Compression**: Automatic gzip/deflate decompression
+- **Syntax Highlighting**: Beautiful code highlighting for JSON, XML, HTML responses
+
+### ⚡ Pre-Request Execution (chaining)
+
+Run another request automatically before your main request — perfect for auth token refresh:
+
+1. Open a request's **Settings** tab
+2. Select a "Pre-Request" from the dropdown
+3. The pre-request runs first, storing its response for chaining
+
+Cycle detection prevents infinite loops (A→B→A chains are blocked).
 
 ### 🔗 Request Chaining
 
@@ -67,14 +79,38 @@ Authorization: Bearer {{login.response.body.token}}
 
 > **Note:** Responses are session-scoped and cleared when VS Code restarts.
 
+### 📋 Copy as Code
+
+Generate code snippets in 6 languages — right-click any request or use the Command Palette:
+
+| Language | Library |
+|----------|---------|
+| cURL | Command line |
+| JavaScript | fetch API |
+| Python | requests |
+| C# | HttpClient |
+| Go | net/http |
+| PHP | curl |
+
+**Variable handling:** Choose to resolve variables with current values or keep `{{placeholders}}` — placeholders convert to language-specific environment variable syntax (e.g., `process.env.VAR` for JavaScript).
+
 ### 🌍 Smart Variables
 
 Variables resolve automatically with intelligent precedence:
 
 1. 🔹 Request-level (`@baseUrl = ...`)
 2. 🔹 Active environment
-3. 🔹 Collection defaults
-4. 🔹 Built-in dynamic values
+3. 🔹 Collection-level variables
+4. 🔹 `.env` file (workspace root)
+5. 🔹 Built-in dynamic values
+
+**`.env` file support:** Place a `.env` file in your workspace root and variables are automatically available:
+
+```env
+# .env
+BASE_URL=https://api.example.com
+API_KEY=your-secret-key
+```
 
 **Built-in variables:**
 
@@ -87,11 +123,16 @@ Variables resolve automatically with intelligent precedence:
 
 ### 📦 Collection Defaults
 
-Set default headers and auth for an entire collection — individual requests can override:
+Set default headers, auth, and variables for an entire collection — individual requests can override:
 
 1. Right-click collection → **Collection Settings**
-2. Add default headers or auth
+2. Add default headers, auth, or collection-level variables
 3. All requests inherit these automatically
+
+**Inheritance controls:**
+
+- Requests can disable individual inherited headers
+- Auth can be set to "Inherit from Collection" or overridden per-request
 
 ### 📂 Repo-Based Collections
 
@@ -124,6 +165,33 @@ By default, `.endpoint/collections/*.json` files are safe to commit. If you need
 .endpoint/collections/
 ```
 
+### 📜 History Management
+
+Every request you send is automatically tracked:
+
+- **Replay**: Click any history item to reopen and resend
+- **Save to Collection**: Right-click → Save to preserve a useful request
+- **Delete**: Remove individual items or clear all history
+- **Configurable Limit**: Control how many items to retain in settings
+
+### 📥 Smart Import
+
+Import `.http` and `.rest` files with intelligent processing:
+
+- **Auth Detection**: `Authorization: Bearer` and `Authorization: Basic` headers are automatically converted to proper auth configuration
+- **Variable Extraction**: File-level variables are detected and can create a new environment
+- **Import Summary**: Detailed report showing what was imported and recommended next steps
+- **REST Client Compatibility**: `{{$dotenv VAR}}` syntax is automatically converted to `{{VAR}}`
+
+### 🔄 Settings Sync
+
+Your collections and environment metadata sync across machines via VS Code's built-in Settings Sync:
+
+- ✅ Collections (all requests, headers, structure)
+- ✅ Environment names and variable names
+- ❌ Environment variable **values** stay local (stored in OS secure storage)
+- ❌ History (machine-specific)
+
 ---
 
 ## ⚡ Quick Start
@@ -133,6 +201,8 @@ By default, `.endpoint/collections/*.json` files are safe to commit. If you need
 | ➕ New Request | `Cmd+Shift+R` | `Ctrl+Shift+R` |
 | 📥 Import .http | `Cmd+Shift+I` | `Ctrl+Shift+I` |
 | 📤 Export Collection | `Cmd+Shift+E` | `Ctrl+Shift+E` |
+
+**Context menus:** Right-click on collections, requests, environments, and history items for all available actions including Copy as Code, Save to Collection, Duplicate, and more.
 
 Or use the **Collections** sidebar — click ➕ to create, right-click to export.
 
@@ -229,13 +299,14 @@ Press **F5** to launch the extension development host.
 
 ```
 src/
-├── commands/         # Import/Export
-├── http/             # HTTP client
+├── codegen/          # Code generation (6 languages)
+├── commands/         # Import/Export/Copy as Code
+├── http/             # HTTP client & syntax highlighting
 ├── models/           # Data interfaces
-├── parser/           # .http parser
-├── providers/        # Sidebar views
-├── storage/          # Persistence
-└── webview/          # Request panel
+├── parser/           # .http parser & variable resolver
+├── providers/        # Sidebar views & decorations
+├── storage/          # Persistence & .env support
+└── webview/          # Request panel UI
 ```
 
 </details>
