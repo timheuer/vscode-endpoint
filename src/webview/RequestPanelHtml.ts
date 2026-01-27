@@ -1149,6 +1149,13 @@ export function generateRequestPanelHtml(
                 });
             }
 
+            // Update tab content height when window/panel is resized
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(updateResponseTabHeight, 100);
+            });
+
             // Add row buttons
             document.querySelectorAll('[data-action]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
