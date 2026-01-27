@@ -106,6 +106,8 @@ pre.shiki,
     gap: 8px;
     align-items: center;
     margin-bottom: 16px;
+    padding-top: 2px;
+    /* Space for focus outline on buttons */
 }
 
 .request-bar vscode-single-select {
