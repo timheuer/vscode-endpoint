@@ -71,6 +71,10 @@ export function generateRequestPanelHtml(
 
     const data = requestData || getDefaultRequestData();
 
+    // Determine if auth inputs should be initially disabled (inherited auth is being used)
+    const authDisabled = data.inheritedAuth && data.inheritedAuth.type !== 'none' && data.useInheritedAuth !== false;
+    const authDisabledAttr = authDisabled ? 'disabled' : '';
+
     // Calculate initial counts for tab badges
     const queryParamsCount = data.queryParams.filter(p => p.enabled && p.key.trim()).length;
     const requestHeadersCount = data.headers.filter(h => h.enabled && h.key.trim()).length;
@@ -209,8 +213,8 @@ export function generateRequestPanelHtml(
                 </div>
             </div>
 
-            <div class="auth-section" id="authSection">
-                <vscode-single-select id="authType">
+            <div class="auth-section${authDisabled ? ' disabled' : ''}" id="authSection">
+                <vscode-single-select id="authType" ${authDisabledAttr}>
                     <vscode-option value="none" ${data.auth.type === 'none' ? 'selected' : ''}>No Auth</vscode-option>
                     <vscode-option value="basic" ${data.auth.type === 'basic' ? 'selected' : ''}>Basic Auth</vscode-option>
                     <vscode-option value="bearer" ${data.auth.type === 'bearer' ? 'selected' : ''}>Bearer Token</vscode-option>
@@ -220,12 +224,12 @@ export function generateRequestPanelHtml(
                 <div id="authBasic" class="auth-fields ${data.auth.type === 'basic' ? 'active' : ''}">
                     <div class="auth-field-row">
                         <label>Username</label>
-                        <vscode-textfield id="authUsername" value="${escapeHtml(data.auth.username || '')}"></vscode-textfield>
+                        <vscode-textfield id="authUsername" value="${escapeHtml(data.auth.username || '')}" ${authDisabledAttr}></vscode-textfield>
                     </div>
                     <div class="auth-field-row">
                         <label>Password</label>
                         <div class="secret-field-wrapper">
-                            <vscode-textfield id="authPassword" type="password" value="${escapeHtml(data.auth.password || '')}"></vscode-textfield>
+                            <vscode-textfield id="authPassword" type="password" value="${escapeHtml(data.auth.password || '')}" ${authDisabledAttr}></vscode-textfield>
                             <span class="secret-toggle-btn" data-target="authPassword" title="Show/Hide">
                                 <span class="codicon codicon-eye"></span>
                             </span>
@@ -237,7 +241,7 @@ export function generateRequestPanelHtml(
                     <div class="auth-field-row">
                         <label>Token</label>
                         <div class="secret-field-wrapper">
-                            <vscode-textfield id="authToken" type="password" value="${escapeHtml(data.auth.token || '')}"></vscode-textfield>
+                            <vscode-textfield id="authToken" type="password" value="${escapeHtml(data.auth.token || '')}" ${authDisabledAttr}></vscode-textfield>
                             <span class="secret-toggle-btn" data-target="authToken" title="Show/Hide">
                                 <span class="codicon codicon-eye"></span>
                             </span>
@@ -248,12 +252,12 @@ export function generateRequestPanelHtml(
                 <div id="authApiKey" class="auth-fields ${data.auth.type === 'apikey' ? 'active' : ''}">
                     <div class="auth-field-row">
                         <label>Key Name</label>
-                        <vscode-textfield id="authApiKeyName" value="${escapeHtml(data.auth.apiKeyName || '')}"></vscode-textfield>
+                        <vscode-textfield id="authApiKeyName" value="${escapeHtml(data.auth.apiKeyName || '')}" ${authDisabledAttr}></vscode-textfield>
                     </div>
                     <div class="auth-field-row">
                         <label>Key Value</label>
                         <div class="secret-field-wrapper">
-                            <vscode-textfield id="authApiKeyValue" type="password" value="${escapeHtml(data.auth.apiKeyValue || '')}"></vscode-textfield>
+                            <vscode-textfield id="authApiKeyValue" type="password" value="${escapeHtml(data.auth.apiKeyValue || '')}" ${authDisabledAttr}></vscode-textfield>
                             <span class="secret-toggle-btn" data-target="authApiKeyValue" title="Show/Hide">
                                 <span class="codicon codicon-eye"></span>
                             </span>
@@ -261,7 +265,7 @@ export function generateRequestPanelHtml(
                     </div>
                     <div class="auth-field-row">
                         <label>Add to</label>
-                        <vscode-single-select id="authApiKeyIn">
+                        <vscode-single-select id="authApiKeyIn" ${authDisabledAttr}>
                             <vscode-option value="header" ${data.auth.apiKeyIn === 'header' || !data.auth.apiKeyIn ? 'selected' : ''}>Header</vscode-option>
                             <vscode-option value="query" ${data.auth.apiKeyIn === 'query' ? 'selected' : ''}>Query Params</vscode-option>
                         </vscode-single-select>
@@ -894,8 +898,7 @@ export function generateRequestPanelHtml(
                 } else {
                     if (section) section.style.display = 'none';
                     // When there's no inherited auth, make sure auth section is enabled
-                    const authSection = document.getElementById('authSection');
-                    if (authSection) authSection.classList.remove('disabled');
+                    updateAuthSectionState(false);
                 }
             }
 
@@ -973,6 +976,26 @@ export function generateRequestPanelHtml(
                     // Simple rule: disable auth section ONLY if checkbox is checked
                     // If unchecked, auth section is always enabled
                     authSection.classList.toggle('disabled', checkboxChecked);
+                    
+                    // Actually disable/enable the form elements within auth section
+                    // Use setAttribute/removeAttribute for custom elements (vscode-elements)
+                    const authTypeSelect = document.getElementById('authType');
+                    if (authTypeSelect) {
+                        if (checkboxChecked) {
+                            authTypeSelect.setAttribute('disabled', '');
+                        } else {
+                            authTypeSelect.removeAttribute('disabled');
+                        }
+                    }
+                    
+                    // Disable all input fields in auth section
+                    authSection.querySelectorAll('vscode-textfield, vscode-single-select').forEach(el => {
+                        if (checkboxChecked) {
+                            el.setAttribute('disabled', '');
+                        } else {
+                            el.removeAttribute('disabled');
+                        }
+                    });
                 }
             }
             
