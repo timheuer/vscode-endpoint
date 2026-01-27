@@ -11,6 +11,7 @@
   "commands.deleteCollection.title": "Delete Collection",
   "commands.duplicateCollection.title": "Duplicate Collection",
   "commands.collectionSettings.title": "Collection Settings",
+  "commands.convertToRepoCollection.title": "Store in Repository",
   "commands.addRequest.title": "Add Request",
   "commands.editRequest.title": "Edit Request",
   "commands.deleteRequest.title": "Delete Request",

@@ -6,7 +6,7 @@ import { DirtyStateProvider } from './providers/DirtyStateProvider';
 import { RequestPanel } from './webview/RequestPanel';
 import { CollectionSettingsPanel } from './webview/CollectionSettingsPanel';
 import { registerResponseContentProvider } from './http/ResponseContentProvider';
-import { StorageService, VariableService } from './storage';
+import { StorageService, VariableService, RepoCollectionService } from './storage';
 import { Collection } from './models/Collection';
 import { createImportExportCommands, createCopyAsCodeCommand } from './commands';
 import { initializeLogger, disposeLogger, getLogger } from './logger';
@@ -56,6 +56,41 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	logger.debug('Dirty state decoration provider registered');
 
+	// Set up file watcher for repo-based collections
+	const repoCollectionService = new RepoCollectionService();
+	const watchPattern = repoCollectionService.getWatchPattern();
+	if (watchPattern) {
+		const watcher = vscode.workspace.createFileSystemWatcher(watchPattern);
+
+		const handleRepoFileChange = async (uri: vscode.Uri) => {
+			const filename = uri.path.split('/').pop() || 'unknown';
+			logger.debug(`Repo collection file changed: ${filename}`);
+
+			const choice = await vscode.window.showInformationMessage(
+				vscode.l10n.t('The collection file "{0}" has changed on disk.', filename),
+				vscode.l10n.t('Reload'),
+				vscode.l10n.t('Ignore')
+			);
+
+			if (choice === vscode.l10n.t('Reload')) {
+				collectionsProvider.refresh();
+			}
+		};
+
+		watcher.onDidChange(handleRepoFileChange);
+		watcher.onDidCreate(() => {
+			logger.debug('Repo collection file created');
+			collectionsProvider.refresh();
+		});
+		watcher.onDidDelete(() => {
+			logger.debug('Repo collection file deleted');
+			collectionsProvider.refresh();
+		});
+
+		context.subscriptions.push(watcher);
+		logger.debug('Repo collection file watcher registered');
+	}
+
 	// Collection commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand('endpoint.refreshCollections', () => {
@@ -75,6 +110,33 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 		vscode.commands.registerCommand('endpoint.collectionSettings', (item: CollectionItem) => {
 			CollectionSettingsPanel.createOrShow(context.extensionUri, storageService, item.collection);
+		}),
+		vscode.commands.registerCommand('endpoint.convertToRepoCollection', async (item: CollectionItem) => {
+			if (!repoCollectionService.hasWorkspace()) {
+				vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder available. Open a folder to use repo-based collections.'));
+				return;
+			}
+
+			if (item.collection.storageType === 'repo') {
+				vscode.window.showInformationMessage(vscode.l10n.t('Collection "{0}" is already stored in the repository.', item.collection.name));
+				return;
+			}
+
+			const confirm = await vscode.window.showWarningMessage(
+				vscode.l10n.t('Convert "{0}" to a repo-based collection?\n\nSensitive authentication data (passwords, tokens, API keys) will be stored locally and NOT included in the repository file. Team members will need to configure their own credentials.', item.collection.name),
+				{ modal: true },
+				vscode.l10n.t('Convert to Repo')
+			);
+
+			if (confirm === vscode.l10n.t('Convert to Repo')) {
+				try {
+					await storageService.convertToRepoCollection(item.collection);
+					collectionsProvider.refresh();
+					vscode.window.showInformationMessage(vscode.l10n.t('Collection "{0}" is now stored in .endpoint/collections/', item.collection.name));
+				} catch (error) {
+					vscode.window.showErrorMessage(vscode.l10n.t('Failed to convert collection: {0}', String(error)));
+				}
+			}
 		})
 	);
 

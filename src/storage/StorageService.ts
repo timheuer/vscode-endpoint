@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
-import { Collection } from '../models/Collection';
+import { Collection, AuthConfig } from '../models/Collection';
 import { Environment, EnvironmentVariable } from '../models/Environment';
 import { HistoryItem } from '../models/HistoryItem';
 import { getSetting } from '../settings';
+import { RepoCollectionService } from './RepoCollectionService';
 
 const STORAGE_KEYS = {
     COLLECTIONS: 'endpoint.collections',
@@ -40,25 +41,70 @@ interface StoredEnvironment {
  */
 export class StorageService {
     private context: vscode.ExtensionContext;
+    private repoService: RepoCollectionService;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
+        this.repoService = new RepoCollectionService();
+    }
+
+    /**
+     * Get the RepoCollectionService instance
+     */
+    getRepoService(): RepoCollectionService {
+        return this.repoService;
     }
 
     // ==================== Collections ====================
 
     /**
-     * Get all collections from storage
+     * Get local collections from globalState
+     */
+    private getLocalCollections(): Collection[] {
+        const collections = this.context.globalState.get<Collection[]>(STORAGE_KEYS.COLLECTIONS, []);
+        return collections.map(c => ({ ...c, storageType: c.storageType || 'local' }));
+    }
+
+    /**
+     * Save local collections to globalState
+     */
+    private async saveLocalCollections(collections: Collection[]): Promise<void> {
+        await this.context.globalState.update(STORAGE_KEYS.COLLECTIONS, collections);
+    }
+
+    /**
+     * Get all collections from both local storage and repo files
      */
     getCollections(): Collection[] {
-        return this.context.globalState.get<Collection[]>(STORAGE_KEYS.COLLECTIONS, []);
+        const localCollections = this.getLocalCollections();
+        // Note: For sync usage, call getCollectionsAsync() instead
+        return localCollections;
+    }
+
+    /**
+     * Get all collections from both local storage and repo files (async version)
+     */
+    async getCollectionsAsync(): Promise<Collection[]> {
+        const localCollections = this.getLocalCollections();
+        const repoCollections = await this.repoService.loadRepoCollections();
+
+        // Merge local auth data into repo collections
+        const mergedRepoCollections = await Promise.all(
+            repoCollections.map(async (repoCol) => {
+                const localAuth = await this.getRepoCollectionLocalAuth(repoCol.id);
+                return this.mergeAuthIntoCollection(repoCol, localAuth);
+            })
+        );
+
+        return [...localCollections, ...mergedRepoCollections];
     }
 
     /**
      * Save all collections to storage
      */
     async saveCollections(collections: Collection[]): Promise<void> {
-        await this.context.globalState.update(STORAGE_KEYS.COLLECTIONS, collections);
+        const localCollections = collections.filter(c => c.storageType !== 'repo');
+        await this.saveLocalCollections(localCollections);
     }
 
     /**
@@ -70,28 +116,165 @@ export class StorageService {
     }
 
     /**
-     * Save or update a single collection
+     * Get a single collection by ID (async version, includes repo collections)
      */
-    async saveCollection(collection: Collection): Promise<void> {
-        const collections = this.getCollections();
-        const index = collections.findIndex(c => c.id === collection.id);
-
-        if (index !== -1) {
-            collections[index] = collection;
-        } else {
-            collections.push(collection);
-        }
-
-        await this.saveCollections(collections);
+    async getCollectionAsync(id: string): Promise<Collection | undefined> {
+        const collections = await this.getCollectionsAsync();
+        return collections.find(c => c.id === id);
     }
 
     /**
-     * Delete a collection by ID
+     * Save or update a single collection (routes based on storageType)
+     */
+    async saveCollection(collection: Collection): Promise<void> {
+        if (collection.storageType === 'repo') {
+            // Extract and store auth locally before saving to repo
+            await this.saveRepoCollectionLocalAuth(collection);
+
+            // Save sanitized collection to repo file
+            const filename = await this.repoService.saveToRepo(collection);
+            collection.repoFilePath = filename;
+        } else {
+            // Save to local storage
+            const collections = this.getLocalCollections();
+            const index = collections.findIndex(c => c.id === collection.id);
+
+            if (index !== -1) {
+                collections[index] = collection;
+            } else {
+                collections.push(collection);
+            }
+
+            await this.saveLocalCollections(collections);
+        }
+    }
+
+    /**
+     * Delete a collection by ID (routes based on storageType)
      */
     async deleteCollection(id: string): Promise<void> {
-        const collections = this.getCollections();
-        const filtered = collections.filter(c => c.id !== id);
-        await this.saveCollections(filtered);
+        // Try to find in local collections first
+        const localCollections = this.getLocalCollections();
+        const localIndex = localCollections.findIndex(c => c.id === id);
+
+        if (localIndex !== -1) {
+            const collection = localCollections[localIndex];
+            if (collection.storageType === 'repo' && collection.repoFilePath) {
+                await this.repoService.deleteFromRepo(collection.repoFilePath);
+            }
+            const filtered = localCollections.filter(c => c.id !== id);
+            await this.saveLocalCollections(filtered);
+        } else {
+            // Check repo collections
+            const repoCollections = await this.repoService.loadRepoCollections();
+            const repoCol = repoCollections.find(c => c.id === id);
+            if (repoCol?.repoFilePath) {
+                await this.repoService.deleteFromRepo(repoCol.repoFilePath);
+            }
+        }
+
+        // Clean up local auth data
+        await this.deleteRepoCollectionLocalAuth(id);
+    }
+
+    /**
+     * Convert a local collection to repo-based storage
+     */
+    async convertToRepoCollection(collection: Collection): Promise<void> {
+        if (collection.storageType === 'repo') {
+            return; // Already repo-based
+        }
+
+        // Remove from local storage first
+        const collections = this.getLocalCollections();
+        const filtered = collections.filter(c => c.id !== collection.id);
+        await this.saveLocalCollections(filtered);
+
+        // Save auth data locally for repo collection
+        await this.saveRepoCollectionLocalAuth(collection);
+
+        // Save to repo
+        collection.storageType = 'repo';
+        const filename = await this.repoService.saveToRepo(collection);
+        collection.repoFilePath = filename;
+    }
+
+    // ==================== Repo Collection Auth Storage ====================
+
+    /**
+     * Get the secret key prefix for a repo collection's local auth
+     */
+    private getRepoAuthKeyPrefix(collectionId: string): string {
+        return `endpoint.repo.${collectionId}.auth`;
+    }
+
+    /**
+     * Save auth data from a repo collection to local secrets
+     */
+    private async saveRepoCollectionLocalAuth(collection: Collection): Promise<void> {
+        const authData: { defaultAuth?: AuthConfig; requestAuth: Record<string, AuthConfig> } = {
+            requestAuth: {},
+        };
+
+        if (collection.defaultAuth && collection.defaultAuth.type !== 'none') {
+            authData.defaultAuth = collection.defaultAuth;
+        }
+
+        for (const request of collection.requests) {
+            if (request.auth && request.auth.type !== 'none') {
+                authData.requestAuth[request.id] = request.auth;
+            }
+        }
+
+        const key = this.getRepoAuthKeyPrefix(collection.id);
+        await this.context.secrets.store(key, JSON.stringify(authData));
+    }
+
+    /**
+     * Get locally stored auth data for a repo collection
+     */
+    private async getRepoCollectionLocalAuth(collectionId: string): Promise<{ defaultAuth?: AuthConfig; requestAuth: Record<string, AuthConfig> } | undefined> {
+        const key = this.getRepoAuthKeyPrefix(collectionId);
+        const data = await this.context.secrets.get(key);
+        if (!data) {
+            return undefined;
+        }
+        try {
+            return JSON.parse(data);
+        } catch {
+            return undefined;
+        }
+    }
+
+    /**
+     * Delete locally stored auth data for a repo collection
+     */
+    private async deleteRepoCollectionLocalAuth(collectionId: string): Promise<void> {
+        const key = this.getRepoAuthKeyPrefix(collectionId);
+        await this.context.secrets.delete(key);
+    }
+
+    /**
+     * Merge local auth data back into a repo collection
+     */
+    private mergeAuthIntoCollection(
+        collection: Collection,
+        localAuth?: { defaultAuth?: AuthConfig; requestAuth: Record<string, AuthConfig> }
+    ): Collection {
+        if (!localAuth) {
+            return collection;
+        }
+
+        const merged: Collection = {
+            ...collection,
+            defaultAuth: localAuth.defaultAuth || collection.defaultAuth,
+            requests: collection.requests.map(request => ({
+                ...request,
+                auth: localAuth.requestAuth[request.id] || request.auth,
+            })),
+        };
+
+        return merged;
     }
 
     // ==================== Environments ====================

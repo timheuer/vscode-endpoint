@@ -106,6 +106,12 @@
         "category": "Endpoint"
       },
       {
+        "command": "endpoint.convertToRepoCollection",
+        "title": "%commands.convertToRepoCollection.title%",
+        "icon": "$(repo)",
+        "category": "Endpoint"
+      },
+      {
         "command": "endpoint.addRequest",
         "title": "%commands.addRequest.title%",
         "icon": "$(add)",
@@ -339,8 +345,58 @@
           "group": "1_crud@5"
         },
         {
+          "command": "endpoint.convertToRepoCollection",
+          "when": "view == endpointCollections && viewItem == collection",
+          "group": "1_crud@6"
+        },
+        {
           "command": "endpoint.deleteCollection",
           "when": "view == endpointCollections && viewItem == collection",
+          "group": "2_delete"
+        },
+        {
+          "command": "endpoint.addRequest",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "inline@1"
+        },
+        {
+          "command": "endpoint.editCollection",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "inline@2"
+        },
+        {
+          "command": "endpoint.collectionSettings",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "inline@3"
+        },
+        {
+          "command": "endpoint.addRequest",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "1_crud@1"
+        },
+        {
+          "command": "endpoint.editCollection",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "1_crud@2"
+        },
+        {
+          "command": "endpoint.duplicateCollection",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "1_crud@3"
+        },
+        {
+          "command": "endpoint.exportCollection",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "1_crud@4"
+        },
+        {
+          "command": "endpoint.collectionSettings",
+          "when": "view == endpointCollections && viewItem == repoCollection",
+          "group": "1_crud@5"
+        },
+        {
+          "command": "endpoint.deleteCollection",
+          "when": "view == endpointCollections && viewItem == repoCollection",
           "group": "2_delete"
         },
         {

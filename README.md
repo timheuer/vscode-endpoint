@@ -93,6 +93,37 @@ Set default headers and auth for an entire collection — individual requests ca
 2. Add default headers or auth
 3. All requests inherit these automatically
 
+### 📂 Repo-Based Collections
+
+Share collections with your team via version control:
+
+1. Right-click a collection → **Store in Repository**
+2. Collection is saved to `.endpoint/collections/` as JSON
+3. Commit and push — team members get the collection automatically
+
+**What gets shared:**
+
+- ✅ Requests (URL, method, headers, body)
+- ✅ Collection structure and metadata
+- ✅ Non-sensitive configuration
+
+**What stays local:**
+
+- 🔒 Passwords, tokens, API keys (stored in VS Code's secure storage)
+- Team members configure their own credentials
+
+**`.gitignore` recommendations:**
+
+By default, `.endpoint/collections/*.json` files are safe to commit. If you need to exclude specific collections:
+
+```gitignore
+# Exclude specific collections
+.endpoint/collections/my-local-only.json
+
+# Or exclude all (not recommended)
+.endpoint/collections/
+```
+
 ---
 
 ## ⚡ Quick Start

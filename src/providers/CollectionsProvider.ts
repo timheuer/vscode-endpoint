@@ -11,10 +11,12 @@ export class CollectionItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(collection.name, collapsibleState);
-        this.contextValue = 'collection';
-        this.iconPath = new vscode.ThemeIcon('folder');
+        this.contextValue = collection.storageType === 'repo' ? 'repoCollection' : 'collection';
+        this.iconPath = new vscode.ThemeIcon(collection.storageType === 'repo' ? 'folder-library' : 'folder');
         this.tooltip = collection.description || collection.name;
-        this.description = `${collection.requests.length} request${collection.requests.length !== 1 ? 's' : ''}`;
+
+        const repoIndicator = collection.storageType === 'repo' ? ' (repo)' : '';
+        this.description = `${collection.requests.length} request${collection.requests.length !== 1 ? 's' : ''}${repoIndicator}`;
     }
 }
 
@@ -60,38 +62,43 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
     private _onDidChangeTreeData: vscode.EventEmitter<CollectionTreeItem | undefined | null | void> = new vscode.EventEmitter<CollectionTreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<CollectionTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    constructor(private storageService: StorageService) { }
+    private cachedCollections: Collection[] = [];
 
-    private get collections(): Collection[] {
-        return this.storageService.getCollections();
+    constructor(private storageService: StorageService) {
+        // Initialize cache
+        this.refreshCache();
+    }
+
+    private async refreshCache(): Promise<void> {
+        this.cachedCollections = await this.storageService.getCollectionsAsync();
     }
 
     refresh(): void {
-        this._onDidChangeTreeData.fire();
+        this.refreshCache().then(() => {
+            this._onDidChangeTreeData.fire();
+        });
     }
 
     getTreeItem(element: CollectionTreeItem): vscode.TreeItem {
         return element;
     }
 
-    getChildren(element?: CollectionTreeItem): Thenable<CollectionTreeItem[]> {
+    async getChildren(element?: CollectionTreeItem): Promise<CollectionTreeItem[]> {
         if (!element) {
-            return Promise.resolve(
-                this.collections.map(
-                    (c) => new CollectionItem(c, vscode.TreeItemCollapsibleState.Collapsed)
-                )
+            // Ensure cache is fresh
+            await this.refreshCache();
+            return this.cachedCollections.map(
+                (c) => new CollectionItem(c, vscode.TreeItemCollapsibleState.Collapsed)
             );
         }
 
         if (element instanceof CollectionItem) {
-            return Promise.resolve(
-                element.collection.requests.map(
-                    (r) => new RequestItem(r, element.collection.id)
-                )
+            return element.collection.requests.map(
+                (r) => new RequestItem(r, element.collection.id)
             );
         }
 
-        return Promise.resolve([]);
+        return [];
     }
 
     async addCollection(): Promise<Collection | undefined> {
@@ -128,7 +135,7 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
         });
 
         if (newName) {
-            const collection = this.storageService.getCollection(item.collection.id);
+            const collection = await this.storageService.getCollectionAsync(item.collection.id);
             if (collection) {
                 collection.name = newName.trim();
                 collection.updatedAt = Date.now();
@@ -178,7 +185,7 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
 
         if (name) {
             const request = createRequest(name.trim());
-            const collection = this.storageService.getCollection(collectionItem.collection.id);
+            const collection = await this.storageService.getCollectionAsync(collectionItem.collection.id);
             if (collection) {
                 collection.requests.push(request);
                 collection.updatedAt = Date.now();
@@ -203,7 +210,7 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
         });
 
         if (newName) {
-            const collection = this.storageService.getCollection(item.collectionId);
+            const collection = await this.storageService.getCollectionAsync(item.collectionId);
             if (collection) {
                 const request = collection.requests.find((r) => r.id === item.request.id);
                 if (request) {
@@ -225,7 +232,7 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
         );
 
         if (confirm === vscode.l10n.t('Delete')) {
-            const collection = this.storageService.getCollection(item.collectionId);
+            const collection = await this.storageService.getCollectionAsync(item.collectionId);
             if (collection) {
                 collection.requests = collection.requests.filter((r) => r.id !== item.request.id);
                 collection.updatedAt = Date.now();
@@ -236,7 +243,7 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
     }
 
     async duplicateRequest(item: RequestItem): Promise<void> {
-        const collection = this.storageService.getCollection(item.collectionId);
+        const collection = await this.storageService.getCollectionAsync(item.collectionId);
         if (collection) {
             const newRequest = createRequest(`${item.request.name} (Copy)`, item.request.method, item.request.url);
             newRequest.headers = [...item.request.headers];
@@ -249,15 +256,24 @@ export class CollectionsProvider implements vscode.TreeDataProvider<CollectionTr
     }
 
     getCollections(): Collection[] {
-        return this.collections;
+        return this.cachedCollections;
+    }
+
+    async getCollectionsAsync(): Promise<Collection[]> {
+        await this.refreshCache();
+        return this.cachedCollections;
     }
 
     getCollectionById(id: string): Collection | undefined {
-        return this.storageService.getCollection(id);
+        return this.cachedCollections.find(c => c.id === id);
+    }
+
+    async getCollectionByIdAsync(id: string): Promise<Collection | undefined> {
+        return await this.storageService.getCollectionAsync(id);
     }
 
     async updateRequest(collectionId: string, request: Request): Promise<void> {
-        const collection = this.storageService.getCollection(collectionId);
+        const collection = await this.storageService.getCollectionAsync(collectionId);
         if (collection) {
             const index = collection.requests.findIndex((r) => r.id === request.id);
             if (index !== -1) {

@@ -74,6 +74,29 @@ export class CollectionSettingsPanel {
             case 'getAvailableVariables':
                 this._getAvailableVariables();
                 break;
+            case 'convertToRepo':
+                await this._convertToRepo();
+                break;
+        }
+    }
+
+    private async _convertToRepo(): Promise<void> {
+        const confirm = await vscode.window.showWarningMessage(
+            vscode.l10n.t('Convert "{0}" to a repo-based collection?\n\nSensitive authentication data (passwords, tokens, API keys) will be stored locally and NOT included in the repository file. Team members will need to configure their own credentials.', this._collection.name),
+            { modal: true },
+            vscode.l10n.t('Convert to Repo')
+        );
+
+        if (confirm === vscode.l10n.t('Convert to Repo')) {
+            try {
+                await this._storageService.convertToRepoCollection(this._collection);
+                this._collection.storageType = 'repo';
+                vscode.commands.executeCommand('endpoint.refreshCollections');
+                this._update();
+                vscode.window.showInformationMessage(vscode.l10n.t('Collection "{0}" is now stored in .endpoint/collections/', this._collection.name));
+            } catch (error) {
+                vscode.window.showErrorMessage(vscode.l10n.t('Failed to convert collection: {0}', String(error)));
+            }
         }
     }
 
@@ -141,6 +164,8 @@ export class CollectionSettingsPanel {
 
         const headers = this._collection.defaultHeaders || [];
         const auth = this._collection.defaultAuth || { type: 'none' as AuthType };
+        const isRepoCollection = this._collection.storageType === 'repo';
+        const hasWorkspace = vscode.workspace.workspaceFolders !== undefined && vscode.workspace.workspaceFolders.length > 0;
 
         return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -157,6 +182,34 @@ export class CollectionSettingsPanel {
     <!-- Autocomplete dropdown -->
     <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
     <h2>Collection Settings: ${escapeHtml(this._collection.name)}</h2>
+    
+    <div class="section">
+        <div class="section-title">Storage Location</div>
+        ${isRepoCollection ? `
+        <div class="info-banner info-banner-repo">
+            <span class="codicon codicon-folder-library"></span>
+            <span>This collection is stored in <strong>.endpoint/collections/</strong> and can be shared via version control.</span>
+        </div>
+        <p class="info-text info-text-warning">
+            <span class="codicon codicon-warning"></span>
+            Authentication credentials are stored locally and will NOT be included in the repository file. Team members will need to configure their own credentials.
+        </p>
+        ` : `
+        <div class="info-banner info-banner-local">
+            <span class="codicon codicon-folder"></span>
+            <span>This collection is stored locally in VS Code settings.</span>
+        </div>
+        ${hasWorkspace ? `
+        <vscode-button id="convertToRepoBtn" appearance="secondary" style="margin-top: 8px;">
+            <span class="codicon codicon-repo"></span>
+            Store in Repository
+        </vscode-button>
+        <p class="info-text" style="margin-top: 8px;">Convert to share this collection via version control. Sensitive auth data will remain local.</p>
+        ` : `
+        <p class="info-text" style="margin-top: 8px;">Open a workspace folder to enable repository-based storage.</p>
+        `}
+        `}
+    </div>
     
     <div class="section">
         <div class="section-title">Default Headers</div>
@@ -664,6 +717,14 @@ export class CollectionSettingsPanel {
             document.querySelectorAll('.delete-btn[data-action="deleteRow"]').forEach(btn => {
                 btn.addEventListener('click', (e) => e.target.closest('tr').remove());
             });
+
+            // Convert to repo button handler
+            const convertBtn = document.getElementById('convertToRepoBtn');
+            if (convertBtn) {
+                convertBtn.addEventListener('click', () => {
+                    vscode.postMessage({ type: 'convertToRepo' });
+                });
+            }
         })();
     </script>
 </body>

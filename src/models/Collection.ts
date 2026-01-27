@@ -38,6 +38,8 @@ export interface Request {
     updatedAt: number;
 }
 
+export type CollectionStorageType = 'local' | 'repo';
+
 export interface Collection {
     id: string;
     name: string;
@@ -46,6 +48,8 @@ export interface Collection {
     variables?: Record<string, string>;
     defaultHeaders?: RequestHeader[];
     defaultAuth?: AuthConfig;
+    storageType?: CollectionStorageType;
+    repoFilePath?: string;
     createdAt: number;
     updatedAt: number;
 }
@@ -65,13 +69,14 @@ export function createRequest(name: string, method: HttpMethod = 'GET', url: str
     };
 }
 
-export function createCollection(name: string, description?: string): Collection {
+export function createCollection(name: string, description?: string, storageType: CollectionStorageType = 'local'): Collection {
     const now = Date.now();
     return {
         id: generateId(),
         name,
         description,
         requests: [],
+        storageType,
         createdAt: now,
         updatedAt: now,
     };

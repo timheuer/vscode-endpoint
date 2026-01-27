@@ -165,3 +165,40 @@ h2 {
     color: var(--vscode-descriptionForeground);
     font-style: italic;
 }
+
+/* Storage Location Section */
+.info-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.info-banner .codicon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.info-banner-repo {
+    background-color: var(--vscode-inputValidation-infoBackground, rgba(0, 127, 212, 0.1));
+    border: 1px solid var(--vscode-inputValidation-infoBorder, #007acc);
+}
+
+.info-banner-local {
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-widget-border);
+}
+
+.info-text-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+.info-text-warning .codicon {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
