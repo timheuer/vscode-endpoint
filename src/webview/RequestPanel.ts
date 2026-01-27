@@ -954,7 +954,7 @@ export class RequestPanel {
 
         // If this request belongs to a collection, update it
         if (this._collectionId && data.id) {
-            const collection = RequestPanel._storageService.getCollection(this._collectionId);
+            const collection = await RequestPanel._storageService.getCollectionAsync(this._collectionId);
             if (collection) {
                 const requestIndex = collection.requests.findIndex(r => r.id === data.id);
                 if (requestIndex !== -1) {
@@ -1002,14 +1002,13 @@ export class RequestPanel {
                     this._clearDirty();
 
                     vscode.commands.executeCommand('endpoint.refreshCollections');
-                    vscode.window.showInformationMessage(vscode.l10n.t('Request "{0}" saved.', data.name));
                     return;
                 }
             }
         }
 
         // If no collection or request not found, offer to save to a collection
-        const collections = RequestPanel._storageService.getCollections();
+        const collections = await RequestPanel._storageService.getCollectionsAsync();
         if (collections.length === 0) {
             const create = await vscode.window.showInformationMessage(
                 vscode.l10n.t('No collections found. Create one first?'),

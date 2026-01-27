@@ -63,8 +63,14 @@ export function activate(context: vscode.ExtensionContext) {
 		const watcher = vscode.workspace.createFileSystemWatcher(watchPattern);
 
 		const handleRepoFileChange = async (uri: vscode.Uri) => {
+			// Skip if this change was triggered by an internal save
+			if (RepoCollectionService.isInternalSave(uri)) {
+				logger.debug(`Repo collection file changed (internal save, skipping prompt): ${uri.path}`);
+				return;
+			}
+
 			const filename = uri.path.split('/').pop() || 'unknown';
-			logger.debug(`Repo collection file changed: ${filename}`);
+			logger.debug(`Repo collection file changed externally: ${filename}`);
 
 			const choice = await vscode.window.showInformationMessage(
 				vscode.l10n.t('The collection file "{0}" has changed on disk.', filename),

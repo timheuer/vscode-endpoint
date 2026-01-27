@@ -14,8 +14,30 @@ const REDACTED_MARKER = '{{REDACTED}}';
 export class RepoCollectionService {
     private workspaceFolder: vscode.Uri | undefined;
 
+    // Track filenames with timestamps for internal saves to suppress file watcher prompts
+    // Using timestamps allows handling multiple rapid watcher events from a single save
+    private static internalSaves = new Map<string, number>();
+
     constructor() {
         this.workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
+    }
+
+    /**
+     * Check if a file change was triggered by an internal save operation.
+     * Returns true if the file was saved internally within the last 3 seconds.
+     */
+    static isInternalSave(uri: vscode.Uri): boolean {
+        // Extract just the filename for comparison (avoids URI format mismatches)
+        const filename = uri.path.split('/').pop() || '';
+        const saveTime = RepoCollectionService.internalSaves.get(filename);
+        if (saveTime && Date.now() - saveTime < 3000) {
+            return true;
+        }
+        // Clean up expired entry
+        if (saveTime) {
+            RepoCollectionService.internalSaves.delete(filename);
+        }
+        return false;
     }
 
     hasWorkspace(): boolean {
@@ -167,7 +189,16 @@ export class RepoCollectionService {
         const json = JSON.stringify(sanitized, null, 2);
 
         const fileUri = vscode.Uri.joinPath(folderUri, filename);
+
+        // Mark filename as internal save before writing (timestamp for handling multiple events)
+        RepoCollectionService.internalSaves.set(filename, Date.now());
+
         await vscode.workspace.fs.writeFile(fileUri, Buffer.from(json, 'utf8'));
+
+        // Clear the flag after a delay
+        setTimeout(() => {
+            RepoCollectionService.internalSaves.delete(filename);
+        }, 5000);
 
         return filename;
     }

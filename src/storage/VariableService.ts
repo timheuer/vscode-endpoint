@@ -35,7 +35,7 @@ export class VariableService {
 
         // 4. Collection variables (higher precedence than .env)
         if (collectionId) {
-            const collection = this.storageService.getCollection(collectionId);
+            const collection = await this.storageService.getCollectionAsync(collectionId);
             if (collection?.variables) {
                 Object.assign(variables, collection.variables);
             }
@@ -132,7 +132,7 @@ export class VariableService {
         const requestVars: Record<string, string> = requestVariables || {};
 
         if (collectionId) {
-            const collection = this.storageService.getCollection(collectionId);
+            const collection = await this.storageService.getCollectionAsync(collectionId);
             if (collection?.variables) {
                 Object.assign(collectionVars, collection.variables);
             }

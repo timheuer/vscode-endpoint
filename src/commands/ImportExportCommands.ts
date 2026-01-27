@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { StorageService } from '../storage/StorageService';
 import { parseHttpFile, serializeToHttpFile, parsedRequestToRequest, ParsedRequest } from '../parser/HttpParser';
 import { createCollection, Collection, Request } from '../models/Collection';
-import { Environment } from '../models/Environment';
+import { Environment, createEnvironment, createVariable } from '../models/Environment';
 
 /**
  * Extract all variable names from a text string (matches {{VARIABLE_NAME}})
@@ -85,11 +85,11 @@ function getDefinedVariables(environments: Environment[]): Set<string> {
 interface ImportSummary {
     collectionName: string;
     requestCount: number;
-    collectionVariables: string[];
+    createdEnvironmentName?: string;
+    environmentVariables: string[];
+    placeholderVariables: string[];
     usedVariables: string[];
     definedInEnvironments: string[];
-    definedInCollection: string[];
-    missingVariables: string[];
     hasActiveEnvironment: boolean;
     activeEnvironmentName?: string;
 }
@@ -105,38 +105,36 @@ async function showImportSummary(summary: ImportSummary): Promise<void> {
     lines.push(`✅ **Imported ${summary.requestCount} request(s)**`);
     lines.push('');
 
+    // Environment created section
+    if (summary.createdEnvironmentName) {
+        lines.push(`✅ **Created environment:** "${summary.createdEnvironmentName}"`);
+        lines.push('');
+
+        if (summary.environmentVariables.length > 0) {
+            lines.push(`### Variables with values: ${summary.environmentVariables.length}`);
+            lines.push('');
+            summary.environmentVariables.forEach(v => lines.push(`- \`${v}\``));
+            lines.push('');
+        }
+
+        if (summary.placeholderVariables.length > 0) {
+            lines.push(`### ⚠️ Variables needing values: ${summary.placeholderVariables.length}`);
+            lines.push('');
+            lines.push('These variables were found in requests but had no defined value. Edit the environment to set their values:');
+            lines.push('');
+            summary.placeholderVariables.forEach(v => lines.push(`- \`${v}\``));
+            lines.push('');
+        }
+    }
+
     // Variables section
-    if (summary.usedVariables.length > 0) {
-        lines.push('## Variables Analysis');
+    if (summary.usedVariables.length > 0 && summary.definedInEnvironments.length > 0) {
+        lines.push('## Additional Variables');
         lines.push('');
 
-        lines.push(`**Variables found in requests:** ${summary.usedVariables.length}`);
+        lines.push(`### Already available in other environments: ${summary.definedInEnvironments.length}`);
         lines.push('');
-        summary.usedVariables.forEach(v => lines.push(`- \`{{${v}}}\``));
-        lines.push('');
-
-        if (summary.definedInCollection.length > 0) {
-            lines.push(`### ✅ Defined in collection (\`@variable\`): ${summary.definedInCollection.length}`);
-            lines.push('');
-            summary.definedInCollection.forEach(v => lines.push(`- \`${v}\``));
-            lines.push('');
-        }
-
-        if (summary.definedInEnvironments.length > 0) {
-            lines.push(`### ✅ Available in environments: ${summary.definedInEnvironments.length}`);
-            lines.push('');
-            summary.definedInEnvironments.forEach(v => lines.push(`- \`${v}\``));
-            lines.push('');
-        }
-
-        if (summary.missingVariables.length > 0) {
-            lines.push(`### ⚠️ Missing - Not defined anywhere: ${summary.missingVariables.length}`);
-            lines.push('');
-            summary.missingVariables.forEach(v => lines.push(`- \`{{${v}}}\``));
-            lines.push('');
-        }
-    } else {
-        lines.push('*No variables found in requests.*');
+        summary.definedInEnvironments.forEach(v => lines.push(`- \`${v}\``));
         lines.push('');
     }
 
@@ -146,34 +144,46 @@ async function showImportSummary(summary: ImportSummary): Promise<void> {
 
     if (summary.hasActiveEnvironment) {
         lines.push(`✅ **Active environment:** "${summary.activeEnvironmentName}"`);
+        if (summary.createdEnvironmentName && summary.activeEnvironmentName !== summary.createdEnvironmentName) {
+            lines.push('');
+            lines.push(`> 💡 Consider activating "${summary.createdEnvironmentName}" to use the imported variables`);
+        }
     } else {
         lines.push('⚠️ **No active environment selected**');
         lines.push('');
-        lines.push('> 💡 Select an environment to resolve variables at runtime');
+        if (summary.createdEnvironmentName) {
+            lines.push(`> 💡 Activate "${summary.createdEnvironmentName}" to use the imported variables`);
+        } else {
+            lines.push('> 💡 Select an environment to resolve variables at runtime');
+        }
     }
     lines.push('');
 
     // Next steps
-    if (summary.missingVariables.length > 0 || !summary.hasActiveEnvironment) {
+    if (summary.placeholderVariables.length > 0 || !summary.hasActiveEnvironment) {
         lines.push('## Recommended Next Steps');
         lines.push('');
 
         let step = 1;
-        if (summary.missingVariables.length > 0) {
-            lines.push(`### ${step}. Create or update an environment with missing variables`);
+        if (summary.placeholderVariables.length > 0 && summary.createdEnvironmentName) {
+            lines.push(`### ${step}. Set values for placeholder variables`);
             lines.push('');
-            lines.push('1. Open the **Environments** view in the sidebar');
-            lines.push('2. Add or edit an environment');
-            lines.push('3. Add the following variables:');
+            lines.push(`1. Open the **Environments** view in the sidebar`);
+            lines.push(`2. Edit the "${summary.createdEnvironmentName}" environment`);
+            lines.push('3. Set values for:');
             lines.push('');
-            lines.push('| Variable | Value |');
-            lines.push('|----------|-------|');
-            summary.missingVariables.forEach(v => lines.push(`| \`${v}\` | *your value* |`));
+            summary.placeholderVariables.forEach(v => lines.push(`   - \`${v}\``));
             lines.push('');
             step++;
         }
 
-        if (!summary.hasActiveEnvironment) {
+        if (!summary.hasActiveEnvironment && summary.createdEnvironmentName) {
+            lines.push(`### ${step}. Activate the environment`);
+            lines.push('');
+            lines.push(`1. Right-click "${summary.createdEnvironmentName}" in the sidebar`);
+            lines.push('2. Select **"Set as Active"**');
+            lines.push('');
+        } else if (!summary.hasActiveEnvironment) {
             lines.push(`### ${step}. Activate an environment`);
             lines.push('');
             lines.push('1. Right-click an environment in the sidebar');
@@ -272,11 +282,6 @@ export async function importHttpFile(
         // Create collection
         const collection = createCollection(collectionName.trim());
 
-        // Add variables if any
-        if (Object.keys(parsed.variables).length > 0) {
-            collection.variables = parsed.variables;
-        }
-
         // Convert parsed requests to Request objects
         for (const parsedRequest of parsed.requests) {
             const request = parsedRequestToRequest(parsedRequest);
@@ -286,21 +291,24 @@ export async function importHttpFile(
         // Save the collection
         await storageService.saveCollection(collection);
 
-        // Analyze variables for summary
+        // Analyze variables used in requests
         const usedVariables = extractVariablesFromRequests(collection.requests);
-        const collectionVarNames = new Set(Object.keys(collection.variables || {}));
         const environments = await storageService.getEnvironments();
         const envDefinedVars = getDefinedVariables(environments);
         const activeEnv = await storageService.getActiveEnvironment();
 
-        // Categorize variables
-        const definedInCollection: string[] = [];
+        // Determine which variables need to be created:
+        // 1. File-level variables from @varName = value syntax
+        // 2. Missing variables used in requests but not defined anywhere
+        const fileVariables = parsed.variables; // { name: value }
+        const fileVarNames = new Set(Object.keys(fileVariables));
+
         const definedInEnvironments: string[] = [];
         const missingVariables: string[] = [];
 
         for (const varName of usedVariables) {
-            if (collectionVarNames.has(varName)) {
-                definedInCollection.push(varName);
+            if (fileVarNames.has(varName)) {
+                // Defined in file-level variables - will be added to environment
             } else if (envDefinedVars.has(varName)) {
                 definedInEnvironments.push(varName);
             } else {
@@ -308,14 +316,32 @@ export async function importHttpFile(
             }
         }
 
+        // Create an environment if there are file-level variables or missing variables
+        let createdEnvironment: Environment | undefined;
+        const allVarsToCreate = [...Object.entries(fileVariables)];
+
+        // Add missing variables with placeholder values
+        for (const varName of missingVariables) {
+            allVarsToCreate.push([varName, '']);
+        }
+
+        if (allVarsToCreate.length > 0) {
+            createdEnvironment = createEnvironment(collectionName.trim());
+            for (const [name, value] of allVarsToCreate) {
+                createdEnvironment.variables.push(createVariable(name, value));
+            }
+            await storageService.saveEnvironment(createdEnvironment);
+            vscode.commands.executeCommand('endpoint.refreshEnvironments');
+        }
+
         const summary: ImportSummary = {
             collectionName: collectionName,
             requestCount: collection.requests.length,
-            collectionVariables: Object.keys(collection.variables || {}),
+            createdEnvironmentName: createdEnvironment?.name,
+            environmentVariables: Object.keys(fileVariables).sort(),
+            placeholderVariables: missingVariables.sort(),
             usedVariables: Array.from(usedVariables).sort(),
-            definedInCollection: definedInCollection.sort(),
             definedInEnvironments: definedInEnvironments.sort(),
-            missingVariables: missingVariables.sort(),
             hasActiveEnvironment: !!activeEnv,
             activeEnvironmentName: activeEnv?.name,
         };
@@ -324,39 +350,46 @@ export async function importHttpFile(
         vscode.commands.executeCommand('endpoint.refreshCollections');
 
         // Show appropriate message based on results
+        const envCreatedMsg = createdEnvironment
+            ? vscode.l10n.t(' Environment "{0}" created.', createdEnvironment.name)
+            : '';
+
         if (missingVariables.length > 0) {
             const action = await vscode.window.showWarningMessage(
                 vscode.l10n.t(
-                    'Imported {0} request(s) into "{1}". {2} variable(s) not found in any environment.',
+                    'Imported {0} request(s) into "{1}".{2} {3} variable(s) need values.',
                     collection.requests.length,
                     collectionName,
+                    envCreatedMsg,
                     missingVariables.length
                 ),
                 vscode.l10n.t('View Details'),
-                vscode.l10n.t('Configure Environment')
+                vscode.l10n.t('Edit Environment')
             );
 
             if (action === vscode.l10n.t('View Details')) {
                 await showImportSummary(summary);
-            } else if (action === vscode.l10n.t('Configure Environment')) {
-                await showImportSummary(summary);
-                vscode.commands.executeCommand('endpoint.addEnvironment');
+            } else if (action === vscode.l10n.t('Edit Environment')) {
+                vscode.commands.executeCommand('endpoint.environments.focus');
             }
-        } else if (!activeEnv && usedVariables.size > 0) {
+        } else if (createdEnvironment) {
             const action = await vscode.window.showInformationMessage(
                 vscode.l10n.t(
-                    'Imported {0} request(s) into "{1}". No active environment selected.',
+                    'Imported {0} request(s) into "{1}". Environment "{2}" created with {3} variable(s).',
                     collection.requests.length,
-                    collectionName
+                    collectionName,
+                    createdEnvironment.name,
+                    createdEnvironment.variables.length
                 ),
                 vscode.l10n.t('View Details'),
-                vscode.l10n.t('Select Environment')
+                vscode.l10n.t('Activate Environment')
             );
 
             if (action === vscode.l10n.t('View Details')) {
                 await showImportSummary(summary);
-            } else if (action === vscode.l10n.t('Select Environment')) {
-                vscode.commands.executeCommand('endpoint.environments.focus');
+            } else if (action === vscode.l10n.t('Activate Environment')) {
+                await storageService.setActiveEnvironmentId(createdEnvironment.id);
+                vscode.commands.executeCommand('endpoint.refreshEnvironments');
             }
         } else {
             const action = await vscode.window.showInformationMessage(
@@ -382,7 +415,7 @@ export async function exportCollectionToHttpFile(
     collectionId: string,
     storageService: StorageService
 ): Promise<void> {
-    const collection = storageService.getCollection(collectionId);
+    const collection = await storageService.getCollectionAsync(collectionId);
     if (!collection) {
         vscode.window.showErrorMessage(vscode.l10n.t('Collection not found.'));
         return;
@@ -430,7 +463,7 @@ export async function exportCollectionToHttpFile(
 export async function exportAllCollectionsToHttpFile(
     storageService: StorageService
 ): Promise<void> {
-    const collections = storageService.getCollections();
+    const collections = await storageService.getCollectionsAsync();
 
     if (collections.length === 0) {
         vscode.window.showWarningMessage(vscode.l10n.t('No collections to export.'));
@@ -537,7 +570,7 @@ export function createImportExportCommands(
         },
         {
             command: 'endpoint.exportCollection',
-            callback: (arg?: string | { collection?: { id: string } }) => {
+            callback: async (arg?: string | { collection?: { id: string } }) => {
                 // Handle both direct collection ID and CollectionItem from tree view
                 let collectionId: string | undefined;
 
@@ -552,7 +585,7 @@ export function createImportExportCommands(
                 }
 
                 // If no collection ID provided, show picker
-                const collections = storageService.getCollections();
+                const collections = await storageService.getCollectionsAsync();
                 if (collections.length === 0) {
                     vscode.window.showWarningMessage(vscode.l10n.t('No collections to export.'));
                     return;
