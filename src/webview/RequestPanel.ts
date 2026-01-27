@@ -31,9 +31,6 @@ export class RequestPanel {
     private _originalDataHash: string = '';
     private _baseName: string = '';
 
-    /**
-     * Initialize the RequestPanel with required services
-     */
     public static initialize(
         storageService: StorageService,
         variableService: VariableService
@@ -79,9 +76,6 @@ export class RequestPanel {
         // No need to regenerate HTML on visibility change
     }
 
-    /**
-     * Create or show a new request panel
-     */
     public static createOrShow(extensionUri: vscode.Uri, requestData?: RequestData, collectionId?: string): RequestPanel {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
@@ -134,9 +128,6 @@ export class RequestPanel {
         return requestPanel;
     }
 
-    /**
-     * Open a request from a collection
-     */
     public static openRequest(extensionUri: vscode.Uri, request: Request, collectionId?: string): RequestPanel {
         const requestData = requestToRequestData(request);
 
@@ -184,9 +175,6 @@ export class RequestPanel {
         return panel;
     }
 
-    /**
-     * Open a history item
-     */
     public static openHistoryItem(extensionUri: vscode.Uri, historyItem: HistoryItem): RequestPanel {
         const requestData: RequestData = {
             name: `${historyItem.method} ${historyItem.url}`,
@@ -212,9 +200,6 @@ export class RequestPanel {
         return RequestPanel.createOrShow(extensionUri, requestData);
     }
 
-    /**
-     * Load request data into the panel
-     */
     public loadRequest(requestData: RequestData): void {
         this._requestData = requestData;
         this._requestId = requestData.id;
