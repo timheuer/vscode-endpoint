@@ -12,6 +12,61 @@ body {
     background-color: var(--vscode-editor-background);
 }
 
+/* Split Pane Layout */
+.split-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 32px);
+    overflow: hidden;
+}
+
+.request-pane {
+    flex: 0 0 auto;
+    min-height: 150px;
+    overflow: auto;
+    padding-bottom: 8px;
+}
+
+.response-pane {
+    flex: 1;
+    min-height: 100px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.split-divider {
+    height: 6px;
+    cursor: ns-resize;
+    background-color: var(--vscode-widget-border);
+    flex-shrink: 0;
+    position: relative;
+    margin: 4px 0;
+}
+
+.split-divider:hover,
+.split-divider.dragging {
+    background-color: var(--vscode-focusBorder);
+}
+
+.split-divider::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 2px;
+    background-color: var(--vscode-foreground);
+    opacity: 0.3;
+    border-radius: 1px;
+}
+
+.split-divider:hover::before,
+.split-divider.dragging::before {
+    opacity: 0.6;
+}
+
 /* Shiki dual-theme support - uses CSS variables for light/dark */
 pre.shiki,
 .shiki,
@@ -192,13 +247,15 @@ vscode-single-select {
 /* Response Section */
 .response-section {
     display: none;
-    margin-top: 24px;
-    padding-top: 16px;
     border-top: 1px solid var(--vscode-widget-border);
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .response-section.active {
-    display: block;
+    display: flex;
 }
 
 .response-metrics {
@@ -242,8 +299,9 @@ vscode-single-select {
     font-size: var(--vscode-editor-font-size, 13px);
     white-space: pre-wrap;
     word-break: break-word;
-    max-height: 400px;
+    flex: 1;
     overflow: auto;
+    min-height: 100px;
 }
 
 /* Syntax highlighting */
@@ -299,10 +357,18 @@ vscode-single-select {
 /* Response Tabs */
 .response-tabs {
     margin-top: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .response-tab-content {
     padding: 12px 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .tab-badge {

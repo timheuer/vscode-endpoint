@@ -95,6 +95,8 @@ export function generateRequestPanelHtml(
     <!-- Autocomplete dropdown -->
     <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
 
+    <div class="split-container">
+    <div class="request-pane">
     <div class="request-bar">
         <vscode-single-select id="method">
             <vscode-option value="GET" ${data.method === 'GET' ? 'selected' : ''}>GET</vscode-option>
@@ -343,7 +345,9 @@ export function generateRequestPanelHtml(
             </div>
         </vscode-tab-panel>
     </vscode-tabs>
-
+    </div>
+    <div class="split-divider" id="splitDivider"></div>
+    <div class="response-pane">
     <!-- Response Section -->
     <div class="response-section" id="responseSection">
         <div class="response-metrics" id="responseMetrics">
@@ -448,6 +452,8 @@ export function generateRequestPanelHtml(
             </vscode-tab-panel>
         </vscode-tabs>
     </div>
+    </div>
+    </div>
 
     <script type="module" nonce="${nonce}" src="${bundleUri}"></script>
     <script nonce="${nonce}">
@@ -468,6 +474,65 @@ export function generateRequestPanelHtml(
             
             // Request available variables on load
             vscode.postMessage({ type: 'getAvailableVariables' });
+            
+            // Split pane drag handling
+            let isDragging = false;
+            let startY = 0;
+            let startHeight = 0;
+
+            function initSplitPane() {
+                const divider = document.getElementById('splitDivider');
+                const requestPane = document.querySelector('.request-pane');
+                
+                if (!divider || !requestPane) return;
+                
+                // Restore saved height from state
+                const savedState = vscode.getState();
+                if (savedState && savedState.requestPaneHeight) {
+                    requestPane.style.height = savedState.requestPaneHeight + 'px';
+                }
+                
+                divider.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startY = e.clientY;
+                    startHeight = requestPane.offsetHeight;
+                    divider.classList.add('dragging');
+                    document.body.style.cursor = 'ns-resize';
+                    document.body.style.userSelect = 'none';
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaY = e.clientY - startY;
+                    const newHeight = Math.max(150, Math.min(startHeight + deltaY, window.innerHeight - 200));
+                    requestPane.style.height = newHeight + 'px';
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    if (!isDragging) return;
+                    
+                    isDragging = false;
+                    divider.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    
+                    // Save the height to state
+                    const currentState = vscode.getState() || {};
+                    vscode.setState({
+                        ...currentState,
+                        requestPaneHeight: requestPane.offsetHeight
+                    });
+                });
+            }
+
+            // Initialize split pane when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initSplitPane);
+            } else {
+                initSplitPane();
+            }
             
             // Restore state if available
             const previousState = vscode.getState();
