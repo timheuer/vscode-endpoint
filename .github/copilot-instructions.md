@@ -21,7 +21,7 @@ VS Code REST Client extension with native GUI using vscode-elements for styling.
 ### Key Patterns
 
 1. **Storage**: Use `StorageService` for all persistence (globalState for data, secrets for sensitive values). Settings Sync enabled for `endpoint.collections` and `endpoint.environments` keys via `setKeysForSync()` in activation. Collections (including all requests, headers, auth) and environment metadata (names, variable names, enabled flags) sync across machines. Environment variable values stored in SecretStorage do NOT sync (OS credential store is machine-local). Active environment ID and history are NOT synced (machine-specific).
-2. **Variables**: Use `VariableService` for variable resolution with precedence: Request > Environment > Collection > Built-in
+2. **Variables**: Use `VariableService` for variable resolution with precedence: Request > Environment > Collection > .env file > Built-in. The `DotEnvService` singleton reads `.env` files from the workspace root using standard KEY=value format (supports comments with #, quoted values).
 3. **HTTP Execution**: Use native Node.js `http`/`https` modules via `HttpClient`
 4. **Response Display**: Virtual documents with `endpoint-response:` URI scheme
 5. **Webview State**: Use `vscode.setState()`/`vscode.getState()` for preserving form data. With `retainContextWhenHidden: true`, avoid regenerating HTML on visibility change. **CSP Note**: When loading external scripts via `src` attribute, the CSP must include `${webview.cspSource}` in `script-src` (nonce alone only works for inline scripts).

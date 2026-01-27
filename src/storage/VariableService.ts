@@ -1,4 +1,5 @@
 import { StorageService } from './StorageService';
+import { DotEnvService } from './DotEnvService';
 import { resolveVariables, ResolverOptions } from '../parser/VariableResolver';
 
 /**
@@ -8,7 +9,8 @@ import { resolveVariables, ResolverOptions } from '../parser/VariableResolver';
  * 1. Request-level variables (passed in)
  * 2. Active Environment variables
  * 3. Collection variables (from Collection.variables)
- * 4. Built-in variables ($timestamp, $guid, etc.)
+ * 4. .env file variables (from workspace root)
+ * 5. Built-in variables ($timestamp, $guid, etc.)
  */
 export class VariableService {
     constructor(private storageService: StorageService) { }
@@ -26,7 +28,12 @@ export class VariableService {
     ): Promise<Record<string, string>> {
         const variables: Record<string, string> = {};
 
-        // 4. Collection variables (lowest precedence among user-defined)
+        // 5. .env file variables (lowest precedence among user-defined)
+        const dotEnvService = DotEnvService.getInstance();
+        const dotEnvVars = dotEnvService.getVariables();
+        Object.assign(variables, dotEnvVars);
+
+        // 4. Collection variables (higher precedence than .env)
         if (collectionId) {
             const collection = this.storageService.getCollection(collectionId);
             if (collection?.variables) {
@@ -112,16 +119,18 @@ export class VariableService {
         collectionId?: string,
         requestVariables?: Record<string, string>
     ): Promise<{
+        dotenv: Record<string, string>;
         collection: Record<string, string>;
         environment: Record<string, string>;
         request: Record<string, string>;
         merged: Record<string, string>;
     }> {
+        const dotEnvService = DotEnvService.getInstance();
+        const dotenvVars: Record<string, string> = dotEnvService.getVariables();
         const collectionVars: Record<string, string> = {};
         const environmentVars: Record<string, string> = {};
         const requestVars: Record<string, string> = requestVariables || {};
 
-        // Get collection variables
         if (collectionId) {
             const collection = this.storageService.getCollection(collectionId);
             if (collection?.variables) {
@@ -129,7 +138,6 @@ export class VariableService {
             }
         }
 
-        // Get environment variables
         const activeEnvironment = await this.storageService.getActiveEnvironment();
         if (activeEnvironment) {
             for (const envVar of activeEnvironment.variables) {
@@ -140,6 +148,7 @@ export class VariableService {
         }
 
         return {
+            dotenv: dotenvVars,
             collection: collectionVars,
             environment: environmentVars,
             request: requestVars,
