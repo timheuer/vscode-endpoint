@@ -82,12 +82,15 @@ export class CollectionSettingsPanel {
 
     private async _convertToRepo(): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            vscode.l10n.t('Convert "{0}" to a repo-based collection?\n\nSensitive authentication data (passwords, tokens, API keys) will be stored locally and NOT included in the repository file. Team members will need to configure their own credentials.', this._collection.name),
-            { modal: true },
-            vscode.l10n.t('Convert to Repo')
+            vscode.l10n.t('Convert "{0}" to a repo-based collection?', this._collection.name),
+            {
+                modal: true,
+                detail: vscode.l10n.t('Sensitive authentication data (passwords, tokens, API keys) will be stored locally and NOT included in the repository file. Team members will need to configure their own credentials.')
+            },
+            vscode.l10n.t('Convert')
         );
 
-        if (confirm === vscode.l10n.t('Convert to Repo')) {
+        if (confirm === vscode.l10n.t('Convert')) {
             try {
                 await this._storageService.convertToRepoCollection(this._collection);
                 this._collection.storageType = 'repo';

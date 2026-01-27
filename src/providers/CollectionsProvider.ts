@@ -12,7 +12,7 @@ export class CollectionItem extends vscode.TreeItem {
     ) {
         super(collection.name, collapsibleState);
         this.contextValue = collection.storageType === 'repo' ? 'repoCollection' : 'collection';
-        this.iconPath = new vscode.ThemeIcon(collection.storageType === 'repo' ? 'folder-library' : 'folder');
+        this.iconPath = new vscode.ThemeIcon(collection.storageType === 'repo' ? 'repo-pinned' : 'folder');
         this.tooltip = collection.description || collection.name;
 
         const repoIndicator = collection.storageType === 'repo' ? ' (repo)' : '';
