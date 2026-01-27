@@ -204,12 +204,8 @@ export function generateRequestPanelHtml(
             <div class="inherited-auth-section" id="inheritedAuthSection" style="${!data.inheritedAuth || data.inheritedAuth.type === 'none' ? 'display: none;' : ''}">
                 <div class="inherited-auth-toggle">
                     <vscode-checkbox id="useInheritedAuth" ${data.useInheritedAuth !== false ? 'checked' : ''}>
-                        Use inherited auth from collection
+                        Use inherited auth from collection (<span class="inherited-auth-type" id="inheritedAuthType">${data.inheritedAuth?.type || 'none'}</span>)
                     </vscode-checkbox>
-                    <span class="inherited-auth-type" id="inheritedAuthType">${data.inheritedAuth?.type || 'none'}</span>
-                </div>
-                <div class="inherited-auth-preview" id="inheritedAuthPreview">
-                    ${renderInheritedAuth(data.inheritedAuth)}
                 </div>
             </div>
 
@@ -524,6 +520,11 @@ export function generateRequestPanelHtml(
                         ...currentState,
                         requestPaneHeight: requestPane.offsetHeight
                     });
+                    
+                    // Trigger scroll recalculation after resize
+                    if (typeof updateResponseTabHeight === 'function') {
+                        setTimeout(updateResponseTabHeight, 50);
+                    }
                 });
             }
 
@@ -766,10 +767,19 @@ export function generateRequestPanelHtml(
                 // Restore useInheritedAuth state
                 const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
                 if (useInheritedAuthCheckbox) {
-                    // Default to true if inherited auth exists and useInheritedAuth is not explicitly false
-                    const useInherited = state.useInheritedAuth !== false && inheritedAuth && inheritedAuth.type !== 'none';
+                    // Respect explicit false, default to true only if undefined and inherited auth exists
+                    const useInherited = state.useInheritedAuth === true || 
+                        (state.useInheritedAuth === undefined && inheritedAuth && inheritedAuth.type !== 'none');
+                    
+                    console.log('[Auth Debug] restoreState useInheritedAuth:', {
+                        stateValue: state.useInheritedAuth,
+                        inheritedAuth: inheritedAuth,
+                        computed: useInherited
+                    });
+                    
                     useInheritedAuthCheckbox.checked = useInherited;
-                    updateAuthSectionState();
+                    // Pass the value directly to avoid timing issues with web component
+                    updateAuthSectionState(useInherited);
                 }
                 
                 // Restore body
@@ -879,8 +889,8 @@ export function generateRequestPanelHtml(
                 if (auth && auth.type && auth.type !== 'none') {
                     if (section) section.style.display = '';
                     if (typeBadge) typeBadge.textContent = auth.type;
-                    // Update auth section disabled state
-                    updateAuthSectionState();
+                    // Don't call updateAuthSectionState here - restoreState already handled it
+                    // This function only controls visibility of the inherited auth section
                 } else {
                     if (section) section.style.display = 'none';
                     // When there's no inherited auth, make sure auth section is enabled
@@ -950,38 +960,46 @@ export function generateRequestPanelHtml(
             });
 
             // Use inherited auth toggle handler
-            function updateAuthSectionState() {
+            function updateAuthSectionState(forceUseInherited) {
                 const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
                 const authSection = document.getElementById('authSection');
-                const inheritedAuthPreview = document.getElementById('inheritedAuthPreview');
-                const inheritedAuthSection = document.getElementById('inheritedAuthSection');
                 
-                // Only disable auth section if:
-                // 1. The inherited auth section is visible (has valid inherited auth)
-                // 2. AND the "use inherited auth" checkbox is checked
-                const hasValidInheritedAuth = inheritedAuthSection && 
-                    inheritedAuthSection.style.display !== 'none' &&
-                    inheritedAuth && 
-                    inheritedAuth.type && 
-                    inheritedAuth.type !== 'none';
+                // Use forceUseInherited if provided, otherwise read from checkbox
+                // Default to false if checkbox.checked is undefined (web component not ready)
+                const checkboxChecked = forceUseInherited !== undefined ? forceUseInherited : 
+                    (useInheritedAuthCheckbox && useInheritedAuthCheckbox.checked === true);
                 
-                if (useInheritedAuthCheckbox && authSection) {
-                    const useInherited = hasValidInheritedAuth && useInheritedAuthCheckbox.checked;
-                    authSection.classList.toggle('disabled', useInherited);
-                    if (inheritedAuthPreview) {
-                        inheritedAuthPreview.classList.toggle('hidden', !useInherited);
-                    }
+                if (authSection) {
+                    // Simple rule: disable auth section ONLY if checkbox is checked
+                    // If unchecked, auth section is always enabled
+                    authSection.classList.toggle('disabled', checkboxChecked);
                 }
             }
             
             const useInheritedAuthCheckbox = document.getElementById('useInheritedAuth');
             if (useInheritedAuthCheckbox) {
                 useInheritedAuthCheckbox.addEventListener('change', () => {
+                    const inheritedAuthSection = document.getElementById('inheritedAuthSection');
+                    const hasValidInheritedAuth = inheritedAuthSection && 
+                        inheritedAuthSection.style.display !== 'none' &&
+                        inheritedAuth && 
+                        inheritedAuth.type && 
+                        inheritedAuth.type !== 'none';
+                    
+                    // When using inherited auth, reset request auth to 'none'
+                    // These states are mutually exclusive
+                    if (useInheritedAuthCheckbox.checked && hasValidInheritedAuth) {
+                        const authTypeSelect = document.getElementById('authType');
+                        if (authTypeSelect) {
+                            authTypeSelect.value = 'none';
+                            document.querySelectorAll('.auth-fields').forEach(el => el.classList.remove('active'));
+                        }
+                    }
+                    
                     updateAuthSectionState();
                     saveState();
                 });
-                // Initialize state on load
-                updateAuthSectionState();
+                // Don't initialize here - restoreState() will handle it with the correct value
             }
 
             // Pre-request checkbox handler
@@ -1073,6 +1091,40 @@ export function generateRequestPanelHtml(
             document.getElementById('openInEditorBtn').addEventListener('click', () => {
                 vscode.postMessage({ type: 'openInEditor' });
             });
+
+            // Calculate and set fixed height for response tab content
+            function updateResponseTabHeight() {
+                const responsePane = document.querySelector('.response-pane');
+                const responseMetrics = document.getElementById('responseMetrics');
+                const responseTabs = document.getElementById('responseTabs');
+                
+                if (!responsePane || !responseMetrics || !responseTabs) return;
+                
+                // Get available height: response pane - metrics - tab headers - margins
+                const paneRect = responsePane.getBoundingClientRect();
+                const metricsRect = responseMetrics.getBoundingClientRect();
+                const tabHeaderHeight = 40;
+                const margins = 36;
+                
+                const availableHeight = paneRect.height - metricsRect.height - tabHeaderHeight - margins;
+                
+                // Set height on all tab content divs
+                const contents = document.querySelectorAll('#responseTabs .response-tab-content');
+                contents.forEach(content => {
+                    if (availableHeight > 50) {
+                        content.style.height = availableHeight + 'px';
+                        content.style.maxHeight = availableHeight + 'px';
+                    }
+                });
+            }
+
+            // Update tab content height on tab change
+            const responseTabs = document.getElementById('responseTabs');
+            if (responseTabs) {
+                responseTabs.addEventListener('vsc-tabs-select', () => {
+                    setTimeout(updateResponseTabHeight, 50);
+                });
+            }
 
             // Add row buttons
             document.querySelectorAll('[data-action]').forEach(btn => {
@@ -1488,8 +1540,10 @@ export function generateRequestPanelHtml(
             }, true);
 
             function showResponse(response) {
-                const section = document.getElementById('responseSection');
-                section.classList.add('active');
+                const responsePane = document.querySelector('.response-pane');
+                const divider = document.getElementById('splitDivider');
+                if (responsePane) responsePane.classList.add('visible');
+                if (divider) divider.classList.add('visible');
                 
                 // Status metrics
                 const statusEl = document.getElementById('responseStatus');
@@ -1577,6 +1631,9 @@ export function generateRequestPanelHtml(
                 
                 // Generate code snippet
                 generateCodeSnippet();
+                
+                // Update tab content heights after response is displayed
+                setTimeout(updateResponseTabHeight, 100);
             }
             
             function escapeHtmlJs(text) {
@@ -1589,8 +1646,10 @@ export function generateRequestPanelHtml(
             }
 
             function showError(error) {
-                const section = document.getElementById('responseSection');
-                section.classList.add('active');
+                const responsePane = document.querySelector('.response-pane');
+                const divider = document.getElementById('splitDivider');
+                if (responsePane) responsePane.classList.add('visible');
+                if (divider) divider.classList.add('visible');
                 
                 const statusEl = document.getElementById('responseStatus');
                 statusEl.textContent = 'Error';
@@ -1718,50 +1777,6 @@ function renderInheritedHeaderRows(headers: { key: string; value: string }[], st
         </tr>
     `;
     }).join('');
-}
-
-function renderInheritedAuth(auth: AuthConfig | undefined): string {
-    if (!auth || auth.type === 'none') {
-        return '<div class="inherited-auth-field"><span>No authentication configured</span></div>';
-    }
-
-    switch (auth.type) {
-        case 'basic':
-            return `
-                <div class="inherited-auth-field">
-                    <label>Username</label>
-                    <vscode-textfield value="${escapeHtml(auth.username || '')}" disabled></vscode-textfield>
-                </div>
-                <div class="inherited-auth-field">
-                    <label>Password</label>
-                    <vscode-textfield type="password" value="${escapeHtml(auth.password || '')}" disabled></vscode-textfield>
-                </div>
-            `;
-        case 'bearer':
-            return `
-                <div class="inherited-auth-field">
-                    <label>Token</label>
-                    <vscode-textfield type="password" value="${escapeHtml(auth.token || '')}" disabled></vscode-textfield>
-                </div>
-            `;
-        case 'apikey':
-            return `
-                <div class="inherited-auth-field">
-                    <label>Key Name</label>
-                    <vscode-textfield value="${escapeHtml(auth.apiKeyName || '')}" disabled></vscode-textfield>
-                </div>
-                <div class="inherited-auth-field">
-                    <label>Key Value</label>
-                    <vscode-textfield type="password" value="${escapeHtml(auth.apiKeyValue || '')}" disabled></vscode-textfield>
-                </div>
-                <div class="inherited-auth-field">
-                    <label>Add to</label>
-                    <vscode-textfield value="${auth.apiKeyIn === 'query' ? 'Query Params' : 'Header'}" disabled></vscode-textfield>
-                </div>
-            `;
-        default:
-            return '';
-    }
 }
 
 function renderAvailableRequestOptions(requests: { id: string; name: string }[], selectedId?: string): string {

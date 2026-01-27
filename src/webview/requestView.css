@@ -21,18 +21,27 @@ body {
 }
 
 .request-pane {
-    flex: 0 0 auto;
+    flex: 1;
     min-height: 150px;
     overflow: auto;
     padding-bottom: 8px;
 }
 
+/* When response is visible, request pane should not grow */
+.split-container:has(.response-pane.visible) .request-pane {
+    flex: 0 0 auto;
+}
+
 .response-pane {
     flex: 1;
-    min-height: 100px;
-    overflow: auto;
-    display: flex;
+    min-height: 0;
+    overflow: hidden;
+    display: none;
     flex-direction: column;
+}
+
+.response-pane.visible {
+    display: flex;
 }
 
 .split-divider {
@@ -42,6 +51,11 @@ body {
     flex-shrink: 0;
     position: relative;
     margin: 4px 0;
+    display: none;
+}
+
+.split-divider.visible {
+    display: block;
 }
 
 .split-divider:hover,
@@ -246,16 +260,12 @@ vscode-single-select {
 
 /* Response Section */
 .response-section {
-    display: none;
     border-top: 1px solid var(--vscode-widget-border);
     flex: 1;
-    overflow: auto;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-}
-
-.response-section.active {
-    display: flex;
 }
 
 .response-metrics {
@@ -357,18 +367,11 @@ vscode-single-select {
 /* Response Tabs */
 .response-tabs {
     margin-top: 12px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
 }
 
 .response-tab-content {
     padding: 12px 0;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .tab-badge {
@@ -554,38 +557,6 @@ vscode-checkbox {
     font-size: 10px;
     font-weight: normal;
     text-transform: capitalize;
-}
-
-.inherited-auth-preview {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--vscode-widget-border);
-}
-
-.inherited-auth-preview.hidden {
-    display: none;
-}
-
-.inherited-auth-field {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.inherited-auth-field:last-child {
-    margin-bottom: 0;
-}
-
-.inherited-auth-field label {
-    width: 100px;
-    flex-shrink: 0;
-    font-size: 12px;
-    color: var(--vscode-descriptionForeground);
-}
-
-.inherited-auth-field vscode-textfield {
-    flex: 1;
 }
 
 .no-inherited-headers {

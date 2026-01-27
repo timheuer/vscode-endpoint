@@ -160,7 +160,8 @@ export class RequestPanel {
                 // Inherited auth
                 if (collection.defaultAuth && collection.defaultAuth.type !== 'none') {
                     requestData.inheritedAuth = collection.defaultAuth;
-                    requestData.useInheritedAuth = true;
+                    // Respect saved useInheritedAuth value, default to true only if not explicitly set
+                    requestData.useInheritedAuth = request.useInheritedAuth !== false;
                 }
 
                 // Available requests for pre-request selection (exclude current request)
@@ -791,9 +792,17 @@ export class RequestPanel {
             headers[h.key] = h.value;
         });
 
-        // Determine effective auth - request auth overrides collection auth
-        const effectiveAuth = data.auth.type !== 'none' ? data.auth :
-            (collectionDefaults.auth && collectionDefaults.auth.type !== 'none' ? collectionDefaults.auth : data.auth);
+        // Determine effective auth - respect useInheritedAuth flag
+        // Priority: If useInheritedAuth is checked (and valid inherited auth exists), use inherited auth
+        // Otherwise, request auth overrides collection auth
+        let effectiveAuth = data.auth;
+        if (data.useInheritedAuth !== false && data.inheritedAuth && data.inheritedAuth.type && data.inheritedAuth.type !== 'none') {
+            effectiveAuth = data.inheritedAuth;
+        } else if (data.auth.type !== 'none') {
+            effectiveAuth = data.auth;
+        } else if (collectionDefaults.auth && collectionDefaults.auth.type !== 'none') {
+            effectiveAuth = collectionDefaults.auth;
+        }
 
         // Add auth headers (resolve variables in auth values)
         if (effectiveAuth.type === 'basic' && effectiveAuth.username) {
@@ -992,6 +1001,7 @@ export class RequestPanel {
                         headers: data.headers.map(h => ({ name: h.key, value: h.value, enabled: h.enabled })),
                         body: data.body,
                         auth: data.auth,
+                        useInheritedAuth: data.useInheritedAuth,
                         disabledInheritedHeaders: disabledInheritedHeaders.length > 0 ? disabledInheritedHeaders : undefined,
                         preRequestId: data.preRequestId || undefined,
                         updatedAt: Date.now()
