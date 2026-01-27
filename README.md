@@ -32,6 +32,7 @@ Build any HTTP request with an intuitive tabbed interface:
 - **Headers**: Add, remove, enable/disable with toggles
 - **Auth**: None, Basic, Bearer Token, API Key
 - **Body**: JSON, Form Data, Raw Text, XML
+- **Resizable Split Pane**: Drag the divider between request and response to customize your view
 
 ### 🔗 Request Chaining
 
