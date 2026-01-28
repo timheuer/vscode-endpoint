@@ -12,6 +12,7 @@ import { getGenerator } from '../codegen';
 import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
 import { DirtyStateProvider } from '../providers/DirtyStateProvider';
 import { getLogger } from '../logger';
+import { getSetting } from '../settings';
 
 export class RequestPanel {
     public static currentPanel: RequestPanel | undefined;
@@ -868,12 +869,17 @@ export class RequestPanel {
             updatedAt: Date.now(),
         };
 
-        // Create history item before sending
+        // Create history item - check setting to determine whether to store resolved or unresolved values
+        // When storeResolvedValues is false (default): stores placeholders like {{TOKEN}} - more secure
+        // When storeResolvedValues is true: stores actual values including credentials - useful for debugging
+        const storeResolvedValues = getSetting('history.storeResolvedValues') ?? false;
         const historyItem = createHistoryItem(
             data.method as any,
-            resolvedUrl,
-            resolvedHeaders.map(h => ({ ...h, enabled: true })),
-            { type: data.body.type, content: resolvedBody || '' }
+            storeResolvedValues ? resolvedUrl : url,
+            storeResolvedValues 
+                ? resolvedHeaders.map(h => ({ name: h.name, value: h.value, enabled: true }))
+                : data.headers.filter(h => h.enabled && h.key).map(h => ({ name: h.key, value: h.value, enabled: true })),
+            { type: data.body.type, content: storeResolvedValues ? (resolvedBody || '') : (data.body.content || '') }
         );
 
         // Show loading state

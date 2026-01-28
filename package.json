@@ -601,6 +601,11 @@
             "%configuration.defaultContentType.enum.none%"
           ],
           "description": "%configuration.defaultContentType.description%"
+        },
+        "endpoint.history.storeResolvedValues": {
+          "type": "boolean",
+          "default": false,
+          "description": "%configuration.history.storeResolvedValues.description%"
         }
       }
     }

@@ -10,6 +10,7 @@ export interface EndpointSettings {
     rejectUnauthorized: boolean;
     historyLimit: number;
     defaultContentType: 'json' | 'form' | 'xml' | 'text' | 'none';
+    'history.storeResolvedValues': boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: EndpointSettings = {
     rejectUnauthorized: true,
     historyLimit: 100,
     defaultContentType: 'json',
+    'history.storeResolvedValues': false,
 };
 
 /**
@@ -40,6 +42,7 @@ export function getSettings(): EndpointSettings {
             'defaultContentType',
             DEFAULT_SETTINGS.defaultContentType
         ),
+        'history.storeResolvedValues': config.get<boolean>('history.storeResolvedValues', DEFAULT_SETTINGS['history.storeResolvedValues']),
     };
 }
 
