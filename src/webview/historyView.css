@@ -1,0 +1,212 @@
+/* History View Panel Styles */
+
+.history-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 16px;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.history-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.method-badge {
+    background-color: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.method-badge.GET {
+    background-color: #61affe;
+    color: #fff;
+}
+
+.method-badge.POST {
+    background-color: #49cc90;
+    color: #fff;
+}
+
+.method-badge.PUT {
+    background-color: #fca130;
+    color: #fff;
+}
+
+.method-badge.PATCH {
+    background-color: #50e3c2;
+    color: #000;
+}
+
+.method-badge.DELETE {
+    background-color: #f93e3e;
+    color: #fff;
+}
+
+.method-badge.HEAD {
+    background-color: #9012fe;
+    color: #fff;
+}
+
+.method-badge.OPTIONS {
+    background-color: #0d5aa7;
+    color: #fff;
+}
+
+.url-display {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: var(--vscode-editor-font-size, 13px);
+    word-break: break-all;
+}
+
+.section {
+    border: 1px solid var(--vscode-widget-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.section-header {
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    padding: 10px 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-content {
+    padding: 14px;
+}
+
+.metadata-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    align-items: baseline;
+}
+
+.metadata-label {
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.metadata-value {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 13px;
+}
+
+.headers-display {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+.header-row {
+    display: flex;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+}
+
+.header-row:last-child {
+    border-bottom: none;
+}
+
+.header-name {
+    color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+    min-width: 150px;
+}
+
+.header-value {
+    word-break: break-all;
+}
+
+.body-preview {
+    max-height: 400px;
+    overflow: auto;
+    background-color: var(--vscode-input-background);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.body-preview pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.no-data {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}
+
+.truncated-warning {
+    color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
+    font-size: 12px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.response-metrics-inline {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.metric-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.metric-inline .metric-label {
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+}
+
+.metric-inline .metric-value {
+    font-weight: 500;
+}
+
+.source-link {
+    color: var(--vscode-textLink-foreground);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.source-link:hover {
+    text-decoration: underline;
+}
+
+/* Shiki dual-theme support for syntax highlighting */
+.body-preview pre.shiki,
+.body-preview .shiki,
+.body-preview .shiki code,
+.body-preview .shiki .line,
+.body-preview .shiki span {
+    background-color: transparent !important;
+}
+
+.vscode-dark .body-preview .shiki,
+.vscode-dark .body-preview .shiki span {
+    color: var(--shiki-dark) !important;
+}
+
+.vscode-light .body-preview .shiki,
+.vscode-light .body-preview .shiki span {
+    color: var(--shiki-light) !important;
+}

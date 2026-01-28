@@ -4,6 +4,7 @@ import { EnvironmentsProvider, EnvironmentItem, VariableItem } from './providers
 import { HistoryProvider, HistoryTreeItem } from './providers/HistoryProvider';
 import { DirtyStateProvider } from './providers/DirtyStateProvider';
 import { RequestPanel } from './webview/RequestPanel';
+import { HistoryPanel } from './webview/HistoryPanel';
 import { CollectionSettingsPanel } from './webview/CollectionSettingsPanel';
 import { registerResponseContentProvider } from './http/ResponseContentProvider';
 import { StorageService, VariableService, RepoCollectionService } from './storage';
@@ -37,10 +38,13 @@ export function activate(context: vscode.ExtensionContext) {
 	// Initialize RequestPanel with services
 	RequestPanel.initialize(storageService, variableService);
 
+	// Initialize HistoryPanel with services
+	HistoryPanel.initialize(storageService);
+
 	// Initialize providers with StorageService
 	const collectionsProvider = new CollectionsProvider(storageService);
 	const environmentsProvider = new EnvironmentsProvider(storageService);
-	const historyProvider = new HistoryProvider(storageService);
+	const historyProvider = new HistoryProvider(storageService, context);
 	logger.debug('Tree data providers initialized');
 
 	// Register tree data providers
@@ -225,7 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
 			historyProvider.deleteHistoryItem(item);
 		}),
 		vscode.commands.registerCommand('endpoint.openHistoryItem', (item: HistoryTreeItem) => {
-			RequestPanel.openHistoryItem(context.extensionUri, item.historyItem);
+			HistoryPanel.createOrShow(context.extensionUri, item.historyItem.id);
 		}),
 		vscode.commands.registerCommand('endpoint.saveHistoryToCollection', async (historyItem) => {
 			// Get list of collections

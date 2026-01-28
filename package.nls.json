@@ -56,6 +56,5 @@
   "configuration.defaultContentType.enum.form": "application/x-www-form-urlencoded",
   "configuration.defaultContentType.enum.xml": "application/xml",
   "configuration.defaultContentType.enum.text": "text/plain",
-  "configuration.defaultContentType.enum.none": "No default content type",
-  "configuration.history.storeResolvedValues.description": "⚠️ SECURITY WARNING: When enabled, history stores actual resolved values including credentials and tokens in plaintext (local storage only, NOT synced to other machines). When disabled (default), stores variable placeholders like {{TOKEN}} which is more secure but you cannot see the exact values that were sent."
+  "configuration.defaultContentType.enum.none": "No default content type"
 }

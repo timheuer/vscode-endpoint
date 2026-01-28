@@ -99,3 +99,18 @@ export function getCollectionSettingsCssUri(
         'collectionSettings.css'
     ]);
 }
+
+/**
+ * Get the URI for history view CSS
+ * Assets are copied to dist/webview during build
+ */
+export function getHistoryViewCssUri(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): vscode.Uri {
+    return getWebviewUri(webview, extensionUri, [
+        'dist',
+        'webview',
+        'historyView.css'
+    ]);
+}

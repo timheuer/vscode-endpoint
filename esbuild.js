@@ -70,6 +70,13 @@ function copyWebviewAssets() {
 		fs.copyFileSync(collectionSettingsCssSource, path.join(webviewDir, 'collectionSettings.css'));
 		console.log('[assets] Copied collectionSettings.css');
 	}
+
+	// Copy historyView.css
+	const historyViewCssSource = path.join(__dirname, 'src', 'webview', 'historyView.css');
+	if (fs.existsSync(historyViewCssSource)) {
+		fs.copyFileSync(historyViewCssSource, path.join(webviewDir, 'historyView.css'));
+		console.log('[assets] Copied historyView.css');
+	}
 }
 
 /**

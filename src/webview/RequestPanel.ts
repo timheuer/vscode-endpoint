@@ -8,6 +8,7 @@ import { ResponseDisplay } from '../http/ResponseDisplay';
 import { StorageService } from '../storage/StorageService';
 import { VariableService } from '../storage/VariableService';
 import { ResponseStorage } from '../storage/ResponseStorage';
+import { maskAuthHeaders, sanitizeUrl, shouldStoreBody, truncateBody, sanitizeBody, sanitizeFormBody } from '../storage/HistorySanitizer';
 import { getGenerator } from '../codegen';
 import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
 import { DirtyStateProvider } from '../providers/DirtyStateProvider';
@@ -869,18 +870,29 @@ export class RequestPanel {
             updatedAt: Date.now(),
         };
 
-        // Create history item - check setting to determine whether to store resolved or unresolved values
-        // When storeResolvedValues is false (default): stores placeholders like {{TOKEN}} - more secure
-        // When storeResolvedValues is true: stores actual values including credentials - useful for debugging
-        const storeResolvedValues = getSetting('history.storeResolvedValues') ?? false;
+        // Create history item - always store unresolved values (placeholders like {{TOKEN}}) for security
+        // Apply sanitization to the URL (masks sensitive query params)
+        const historyUrl = sanitizeUrl(url);
+
+        // Apply sanitization to request headers (masks auth headers)
+        const historyHeaders = maskAuthHeaders(
+            data.headers.filter(h => h.enabled && h.key).map(h => ({ name: h.key, value: h.value, enabled: true }))
+        );
+
         const historyItem = createHistoryItem(
             data.method as any,
-            storeResolvedValues ? resolvedUrl : url,
-            storeResolvedValues 
-                ? resolvedHeaders.map(h => ({ name: h.name, value: h.value, enabled: true }))
-                : data.headers.filter(h => h.enabled && h.key).map(h => ({ name: h.key, value: h.value, enabled: true })),
-            { type: data.body.type, content: storeResolvedValues ? (resolvedBody || '') : (data.body.content || '') }
+            historyUrl,
+            historyHeaders,
+            sanitizeRequestBody(data.body)
         );
+
+        // Store source request and collection IDs for traceability
+        if (this._requestId) {
+            historyItem.sourceRequestId = this._requestId;
+        }
+        if (this._collectionId) {
+            historyItem.sourceCollectionId = this._collectionId;
+        }
 
         // Show loading state
         this._panel.webview.postMessage({
@@ -904,6 +916,24 @@ export class RequestPanel {
             historyItem.statusText = response.statusText;
             historyItem.responseTime = response.time;
 
+            // Store sanitized response headers
+            const responseHeaders: { name: string; value: string; enabled: boolean }[] = Object.entries(response.headers).map(
+                ([name, value]) => ({ name, value: String(value), enabled: true })
+            );
+            historyItem.responseHeaders = maskAuthHeaders(responseHeaders);
+
+            // Store response body based on settings and content type
+            const storeResponses = getSetting('history.storeResponses') ?? true;
+            const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
+
+            if (storeResponses && shouldStoreBody(contentType) && response.body) {
+                const maxResponseSize = getSetting('history.maxResponseSize') ?? 262144;
+                const sanitizedBody = sanitizeBody(response.body);
+                const { body: truncatedBody, truncated } = truncateBody(sanitizedBody, maxResponseSize);
+                historyItem.responseBody = truncatedBody;
+                historyItem.responseBodyTruncated = truncated;
+            }
+
             // Add to history
             await RequestPanel._storageService.addHistoryItem(historyItem);
 
@@ -919,8 +949,7 @@ export class RequestPanel {
                 responseStorage.storeResponse(data.name, response);
             }
 
-            // Highlight response body based on content type
-            const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
+            // Highlight response body based on content type (reuse contentType from above)
             const highlightedBody = await SyntaxHighlighter.getInstance().highlightResponse(response.body, contentType);
 
             // Send response to webview for display in tabbed view
@@ -1211,5 +1240,28 @@ export class RequestPanel {
 
     public dispose(): void {
         this._cleanup();
+    }
+}
+
+/**
+ * Sanitize request body before storing in history.
+ * Masks sensitive parameters in JSON and form-urlencoded bodies.
+ */
+function sanitizeRequestBody(body: { type: string; content?: string }): { type: 'none' | 'json' | 'form' | 'text' | 'xml'; content: string } {
+    const content = body.content || '';
+    const bodyType = body.type as 'none' | 'json' | 'form' | 'text' | 'xml';
+
+    if (!content) {
+        return { type: bodyType, content: '' };
+    }
+
+    switch (body.type) {
+        case 'json':
+            return { type: 'json', content: sanitizeBody(content) };
+        case 'form':
+            return { type: 'form', content: sanitizeFormBody(content) };
+        default:
+            // For raw/xml/other types, don't sanitize (could contain anything)
+            return { type: bodyType, content };
     }
 }

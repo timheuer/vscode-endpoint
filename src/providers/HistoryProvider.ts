@@ -3,6 +3,29 @@ import { HistoryItem, createHistoryItem } from '../models/HistoryItem';
 import { HttpMethod, RequestHeader, RequestBody } from '../models/Collection';
 import { StorageService } from '../storage/StorageService';
 
+const COLLAPSED_STATE_KEY = 'endpoint.historyGroups.collapsed';
+
+type DateGroupName = 'Today' | 'Yesterday' | 'This Week' | 'Older';
+
+/**
+ * Tree item representing a date group (Today, Yesterday, This Week, Older)
+ */
+export class DateGroupItem extends vscode.TreeItem {
+    constructor(
+        public readonly groupName: DateGroupName,
+        public readonly itemCount: number,
+        collapsed: boolean
+    ) {
+        super(
+            vscode.l10n.t(groupName),
+            collapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded
+        );
+        this.contextValue = 'dateGroup';
+        this.iconPath = new vscode.ThemeIcon('calendar');
+        this.description = `${itemCount}`;
+    }
+}
+
 export class HistoryTreeItem extends vscode.TreeItem {
     constructor(
         public readonly historyItem: HistoryItem
@@ -11,7 +34,7 @@ export class HistoryTreeItem extends vscode.TreeItem {
         this.contextValue = 'historyItem';
         this.iconPath = this.getMethodIcon(historyItem.method);
         this.tooltip = this.buildTooltip();
-        this.description = this.formatTimestamp();
+        this.description = this.formatDescription();
         this.command = {
             command: 'endpoint.openHistoryItem',
             title: 'Open History Item',
@@ -49,55 +72,139 @@ export class HistoryTreeItem extends vscode.TreeItem {
         return lines.join('\n');
     }
 
-    private formatTimestamp(): string {
-        const date = new Date(this.historyItem.timestamp);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+    /**
+     * Format description showing status code and response time (e.g., "200 15ms")
+     */
+    private formatDescription(): string {
+        const parts: string[] = [];
 
-        if (diffMins < 1) {
-            return vscode.l10n.t('Just now');
-        } else if (diffMins < 60) {
-            return vscode.l10n.t('{0}m ago', diffMins);
-        } else if (diffHours < 24) {
-            return vscode.l10n.t('{0}h ago', diffHours);
-        } else if (diffDays < 7) {
-            return vscode.l10n.t('{0}d ago', diffDays);
-        } else {
-            return date.toLocaleDateString();
+        if (this.historyItem.statusCode !== undefined) {
+            parts.push(String(this.historyItem.statusCode));
         }
+
+        if (this.historyItem.responseTime !== undefined) {
+            parts.push(`${this.historyItem.responseTime}ms`);
+        }
+
+        return parts.join(' ');
     }
 }
 
-export class HistoryProvider implements vscode.TreeDataProvider<HistoryTreeItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<HistoryTreeItem | undefined | null | void> = new vscode.EventEmitter<HistoryTreeItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<HistoryTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+/**
+ * Categorize a history item into a date group based on its timestamp
+ */
+function getDateGroup(timestamp: number): DateGroupName {
+    const itemDate = new Date(timestamp);
+    const now = new Date();
 
-    constructor(private storageService: StorageService) { }
+    // Reset times to start of day for comparison
+    const itemDay = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffDays = Math.floor((today.getTime() - itemDay.getTime()) / 86400000);
+
+    if (diffDays === 0) {
+        return 'Today';
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return 'This Week';
+    } else {
+        return 'Older';
+    }
+}
+
+/**
+ * Group history items by date category
+ */
+function groupHistoryByDate(history: HistoryItem[]): Map<DateGroupName, HistoryItem[]> {
+    const groups = new Map<DateGroupName, HistoryItem[]>([
+        ['Today', []],
+        ['Yesterday', []],
+        ['This Week', []],
+        ['Older', []],
+    ]);
+
+    for (const item of history) {
+        const group = getDateGroup(item.timestamp);
+        groups.get(group)!.push(item);
+    }
+
+    return groups;
+}
+
+export type HistoryTreeNode = DateGroupItem | HistoryTreeItem;
+
+export class HistoryProvider implements vscode.TreeDataProvider<HistoryTreeNode> {
+    private _onDidChangeTreeData: vscode.EventEmitter<HistoryTreeNode | undefined | null | void> = new vscode.EventEmitter<HistoryTreeNode | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<HistoryTreeNode | undefined | null | void> = this._onDidChangeTreeData.event;
+
+    constructor(private storageService: StorageService, private context: vscode.ExtensionContext) { }
 
     private get history(): HistoryItem[] {
         return this.storageService.getHistory();
+    }
+
+    /**
+     * Get the list of collapsed group names from workspace state
+     */
+    private getCollapsedGroups(): DateGroupName[] {
+        return this.context.workspaceState.get<DateGroupName[]>(COLLAPSED_STATE_KEY, []);
+    }
+
+    /**
+     * Save the collapsed state for a group
+     */
+    async setGroupCollapsed(groupName: DateGroupName, collapsed: boolean): Promise<void> {
+        const collapsedGroups = this.getCollapsedGroups();
+        const index = collapsedGroups.indexOf(groupName);
+
+        if (collapsed && index === -1) {
+            collapsedGroups.push(groupName);
+        } else if (!collapsed && index !== -1) {
+            collapsedGroups.splice(index, 1);
+        }
+
+        await this.context.workspaceState.update(COLLAPSED_STATE_KEY, collapsedGroups);
     }
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
     }
 
-    getTreeItem(element: HistoryTreeItem): vscode.TreeItem {
+    getTreeItem(element: HistoryTreeNode): vscode.TreeItem {
         return element;
     }
 
-    getChildren(element?: HistoryTreeItem): Thenable<HistoryTreeItem[]> {
+    getChildren(element?: HistoryTreeNode): Thenable<HistoryTreeNode[]> {
         if (!element) {
-            // Return history items sorted by timestamp (newest first)
-            return Promise.resolve(
-                [...this.history]
-                    .sort((a, b) => b.timestamp - a.timestamp)
-                    .map((h) => new HistoryTreeItem(h))
-            );
+            // Return date group nodes at root level
+            const sortedHistory = [...this.history].sort((a, b) => b.timestamp - a.timestamp);
+            const groups = groupHistoryByDate(sortedHistory);
+            const collapsedGroups = this.getCollapsedGroups();
+            const dateGroups: DateGroupItem[] = [];
+
+            // Order: Today, Yesterday, This Week, Older
+            const groupOrder: DateGroupName[] = ['Today', 'Yesterday', 'This Week', 'Older'];
+            for (const groupName of groupOrder) {
+                const items = groups.get(groupName) || [];
+                if (items.length > 0) {
+                    const isCollapsed = collapsedGroups.includes(groupName);
+                    dateGroups.push(new DateGroupItem(groupName, items.length, isCollapsed));
+                }
+            }
+
+            return Promise.resolve(dateGroups);
         }
+
+        if (element instanceof DateGroupItem) {
+            // Return history items for this date group
+            const sortedHistory = [...this.history].sort((a, b) => b.timestamp - a.timestamp);
+            const groups = groupHistoryByDate(sortedHistory);
+            const items = groups.get(element.groupName) || [];
+            return Promise.resolve(items.map(item => new HistoryTreeItem(item)));
+        }
+
         return Promise.resolve([]);
     }
 

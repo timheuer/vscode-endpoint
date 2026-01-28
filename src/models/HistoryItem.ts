@@ -10,6 +10,11 @@ export interface HistoryItem {
     statusText?: string;
     responseTime?: number;
     timestamp: number;
+    responseBody?: string;
+    responseHeaders?: RequestHeader[];
+    sourceRequestId?: string;
+    sourceCollectionId?: string;
+    responseBodyTruncated?: boolean;
 }
 
 export function createHistoryItem(

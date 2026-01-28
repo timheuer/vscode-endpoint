@@ -602,10 +602,16 @@
           ],
           "description": "%configuration.defaultContentType.description%"
         },
-        "endpoint.history.storeResolvedValues": {
+        "endpoint.history.storeResponses": {
           "type": "boolean",
-          "default": false,
-          "description": "%configuration.history.storeResolvedValues.description%"
+          "default": true,
+          "description": "Store response bodies in history (JSON responses only)"
+        },
+        "endpoint.history.maxResponseSize": {
+          "type": "number",
+          "default": 262144,
+          "minimum": 1024,
+          "description": "Maximum response body size to store in bytes (default: 256KB)"
         }
       }
     }

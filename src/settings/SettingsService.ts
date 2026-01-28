@@ -10,7 +10,8 @@ export interface EndpointSettings {
     rejectUnauthorized: boolean;
     historyLimit: number;
     defaultContentType: 'json' | 'form' | 'xml' | 'text' | 'none';
-    'history.storeResolvedValues': boolean;
+    'history.storeResponses': boolean;
+    'history.maxResponseSize': number;
 }
 
 /**
@@ -23,7 +24,8 @@ const DEFAULT_SETTINGS: EndpointSettings = {
     rejectUnauthorized: true,
     historyLimit: 100,
     defaultContentType: 'json',
-    'history.storeResolvedValues': false,
+    'history.storeResponses': true,
+    'history.maxResponseSize': 262144,
 };
 
 /**
@@ -42,7 +44,8 @@ export function getSettings(): EndpointSettings {
             'defaultContentType',
             DEFAULT_SETTINGS.defaultContentType
         ),
-        'history.storeResolvedValues': config.get<boolean>('history.storeResolvedValues', DEFAULT_SETTINGS['history.storeResolvedValues']),
+        'history.storeResponses': config.get<boolean>('history.storeResponses', DEFAULT_SETTINGS['history.storeResponses']),
+        'history.maxResponseSize': config.get<number>('history.maxResponseSize', DEFAULT_SETTINGS['history.maxResponseSize']),
     };
 }
 
