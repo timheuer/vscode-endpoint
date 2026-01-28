@@ -17,6 +17,7 @@
   "commands.deleteRequest.title": "Delete Request",
   "commands.duplicateRequest.title": "Duplicate Request",
   "commands.openRequest.title": "Open Request",
+  "commands.sendRequest.title": "Send Request",
   "commands.refreshEnvironments.title": "Refresh Environments",
   "commands.addEnvironment.title": "Add Environment",
   "commands.editEnvironment.title": "Edit Environment",

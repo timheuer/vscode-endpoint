@@ -210,6 +210,12 @@ export class RequestPanel {
         this._panel.webview.postMessage({ type: 'loadRequest', data: requestData });
     }
 
+    public sendImmediately(): void {
+        if (this._requestData) {
+            this._sendRequest(this._requestData);
+        }
+    }
+
     /**
      * Compute a hash of request data for change detection
      */

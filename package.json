@@ -141,6 +141,12 @@
         "category": "Endpoint"
       },
       {
+        "command": "endpoint.sendRequest",
+        "title": "%commands.sendRequest.title%",
+        "icon": "$(play)",
+        "category": "Endpoint"
+      },
+      {
         "command": "endpoint.refreshEnvironments",
         "title": "%commands.refreshEnvironments.title%",
         "icon": "$(refresh)",
@@ -400,14 +406,24 @@
           "group": "2_delete"
         },
         {
-          "command": "endpoint.editRequest",
+          "command": "endpoint.sendRequest",
           "when": "view == endpointCollections && viewItem == request",
           "group": "inline@1"
         },
         {
-          "command": "endpoint.deleteRequest",
+          "command": "endpoint.editRequest",
           "when": "view == endpointCollections && viewItem == request",
           "group": "inline@2"
+        },
+        {
+          "command": "endpoint.deleteRequest",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "inline@3"
+        },
+        {
+          "command": "endpoint.sendRequest",
+          "when": "view == endpointCollections && viewItem == request",
+          "group": "0_send"
         },
         {
           "command": "endpoint.editRequest",

@@ -168,6 +168,10 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 		vscode.commands.registerCommand('endpoint.openRequest', (item: RequestItem) => {
 			RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
+		}),
+		vscode.commands.registerCommand('endpoint.sendRequest', (item: RequestItem) => {
+			const panel = RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
+			panel.sendImmediately();
 		})
 	);
 
