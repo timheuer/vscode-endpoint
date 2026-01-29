@@ -47,12 +47,22 @@ export function activate(context: vscode.ExtensionContext) {
 	const historyProvider = new HistoryProvider(storageService, context);
 	logger.debug('Tree data providers initialized');
 
-	// Register tree data providers
-	context.subscriptions.push(
-		vscode.window.registerTreeDataProvider('endpointCollections', collectionsProvider),
-		vscode.window.registerTreeDataProvider('endpointEnvironments', environmentsProvider),
-		vscode.window.registerTreeDataProvider('endpointHistory', historyProvider)
-	);
+	// Create tree views with collapse all button
+	const collectionsTreeView = vscode.window.createTreeView('endpointCollections', {
+		treeDataProvider: collectionsProvider,
+		showCollapseAll: true
+
+	});
+
+	const environmentsTreeView = vscode.window.createTreeView('endpointEnvironments', {
+		treeDataProvider: environmentsProvider,
+		showCollapseAll: true
+	});
+	const historyTreeView = vscode.window.createTreeView('endpointHistory', {
+		treeDataProvider: historyProvider,
+		showCollapseAll: true
+	});
+	context.subscriptions.push(collectionsTreeView, environmentsTreeView, historyTreeView);
 
 	// Register FileDecorationProvider for dirty state indicators
 	context.subscriptions.push(
