@@ -5,10 +5,18 @@ import { StorageService } from '../storage/StorageService';
 
 const COLLAPSED_STATE_KEY = 'endpoint.historyGroups.collapsed';
 
-type DateGroupName = 'Today' | 'Yesterday' | 'This Week' | 'Older';
+type DateGroupName =
+    | 'Today'
+    | 'Yesterday'
+    | 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday'
+    | 'Last Week'
+    | 'Two Weeks Ago'
+    | 'Three Weeks Ago'
+    | 'Last Month'
+    | 'Older';
 
 /**
- * Tree item representing a date group (Today, Yesterday, This Week, Older)
+ * Tree item representing a date group
  */
 export class DateGroupItem extends vscode.TreeItem {
     constructor(
@@ -108,22 +116,59 @@ function getDateGroup(timestamp: number): DateGroupName {
     } else if (diffDays === 1) {
         return 'Yesterday';
     } else if (diffDays < 7) {
-        return 'This Week';
+        // Show day name for days 2-6 days ago (still within current week context)
+        const dayNames: DateGroupName[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        return dayNames[itemDate.getDay()];
+    } else if (diffDays < 14) {
+        return 'Last Week';
+    } else if (diffDays < 21) {
+        return 'Two Weeks Ago';
+    } else if (diffDays < 28) {
+        return 'Three Weeks Ago';
+    } else if (diffDays < 60) {
+        return 'Last Month';
     } else {
         return 'Older';
     }
 }
 
 /**
+ * Get the display order for date groups, with day names ordered relative to today
+ */
+function getGroupOrder(): DateGroupName[] {
+    const dayNames: DateGroupName[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayDayIndex = new Date().getDay();
+
+    // Build day names in reverse chronological order (yesterday-2 through yesterday-6)
+    // These represent days 2-6 days ago
+    const orderedDays: DateGroupName[] = [];
+    for (let i = 2; i <= 6; i++) {
+        const dayIndex = (todayDayIndex - i + 7) % 7;
+        orderedDays.push(dayNames[dayIndex]);
+    }
+
+    return [
+        'Today',
+        'Yesterday',
+        ...orderedDays,
+        'Last Week',
+        'Two Weeks Ago',
+        'Three Weeks Ago',
+        'Last Month',
+        'Older'
+    ];
+}
+
+/**
  * Group history items by date category
  */
 function groupHistoryByDate(history: HistoryItem[]): Map<DateGroupName, HistoryItem[]> {
-    const groups = new Map<DateGroupName, HistoryItem[]>([
-        ['Today', []],
-        ['Yesterday', []],
-        ['This Week', []],
-        ['Older', []],
-    ]);
+    const groups = new Map<DateGroupName, HistoryItem[]>();
+
+    // Initialize all possible groups
+    for (const groupName of getGroupOrder()) {
+        groups.set(groupName, []);
+    }
 
     for (const item of history) {
         const group = getDateGroup(item.timestamp);
@@ -184,9 +229,7 @@ export class HistoryProvider implements vscode.TreeDataProvider<HistoryTreeNode>
             const collapsedGroups = this.getCollapsedGroups();
             const dateGroups: DateGroupItem[] = [];
 
-            // Order: Today, Yesterday, This Week, Older
-            const groupOrder: DateGroupName[] = ['Today', 'Yesterday', 'This Week', 'Older'];
-            for (const groupName of groupOrder) {
+            for (const groupName of getGroupOrder()) {
                 const items = groups.get(groupName) || [];
                 if (items.length > 0) {
                     const isCollapsed = collapsedGroups.includes(groupName);
