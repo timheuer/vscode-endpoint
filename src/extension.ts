@@ -3,6 +3,7 @@ import { CollectionsProvider, CollectionItem, RequestItem } from './providers/Co
 import { EnvironmentsProvider, EnvironmentItem, VariableItem } from './providers/EnvironmentsProvider';
 import { HistoryProvider, HistoryTreeItem } from './providers/HistoryProvider';
 import { DirtyStateProvider } from './providers/DirtyStateProvider';
+import { StatusBarProvider } from './providers/StatusBarProvider';
 import { RequestPanel } from './webview/RequestPanel';
 import { HistoryPanel } from './webview/HistoryPanel';
 import { CollectionSettingsPanel } from './webview/CollectionSettingsPanel';
@@ -70,6 +71,20 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	logger.debug('Dirty state decoration provider registered');
 
+	// Initialize and register status bar provider
+	const statusBarProvider = new StatusBarProvider(storageService);
+	context.subscriptions.push(statusBarProvider);
+	logger.debug('Status bar provider initialized');
+
+	// Set context for welcome views based on data presence
+	const updateWelcomeViewContext = async () => {
+		const collections = await storageService.getCollectionsAsync();
+		const environments = await storageService.getEnvironments();
+		await vscode.commands.executeCommand('setContext', 'endpoint.hasCollections', collections.length > 0);
+		await vscode.commands.executeCommand('setContext', 'endpoint.hasEnvironments', environments.length > 0);
+	};
+	updateWelcomeViewContext();
+
 	// Set up file watcher for repo-based collections
 	const repoCollectionService = new RepoCollectionService();
 	const watchPattern = repoCollectionService.getWatchPattern();
@@ -115,15 +130,18 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('endpoint.refreshCollections', () => {
 			collectionsProvider.refresh();
+			updateWelcomeViewContext();
 		}),
-		vscode.commands.registerCommand('endpoint.addCollection', () => {
-			collectionsProvider.addCollection();
+		vscode.commands.registerCommand('endpoint.addCollection', async () => {
+			await collectionsProvider.addCollection();
+			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.editCollection', (item: CollectionItem) => {
 			collectionsProvider.editCollection(item);
 		}),
-		vscode.commands.registerCommand('endpoint.deleteCollection', (item: CollectionItem) => {
-			collectionsProvider.deleteCollection(item);
+		vscode.commands.registerCommand('endpoint.deleteCollection', async (item: CollectionItem) => {
+			await collectionsProvider.deleteCollection(item);
+			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.duplicateCollection', (item: CollectionItem) => {
 			collectionsProvider.duplicateCollection(item);
@@ -193,21 +211,31 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('endpoint.refreshEnvironments', () => {
 			environmentsProvider.refresh();
+			statusBarProvider.update();
+			updateWelcomeViewContext();
 		}),
-		vscode.commands.registerCommand('endpoint.addEnvironment', () => {
-			environmentsProvider.addEnvironment();
+		vscode.commands.registerCommand('endpoint.addEnvironment', async () => {
+			await environmentsProvider.addEnvironment();
+			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.editEnvironment', (item: EnvironmentItem) => {
 			environmentsProvider.editEnvironment(item);
 		}),
-		vscode.commands.registerCommand('endpoint.deleteEnvironment', (item: EnvironmentItem) => {
-			environmentsProvider.deleteEnvironment(item);
+		vscode.commands.registerCommand('endpoint.deleteEnvironment', async (item: EnvironmentItem) => {
+			await environmentsProvider.deleteEnvironment(item);
+			statusBarProvider.update();
+			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.duplicateEnvironment', (item: EnvironmentItem) => {
 			environmentsProvider.duplicateEnvironment(item);
 		}),
 		vscode.commands.registerCommand('endpoint.setActiveEnvironment', (item: EnvironmentItem) => {
 			environmentsProvider.setActiveEnvironment(item);
+			statusBarProvider.update();
+		}),
+		vscode.commands.registerCommand('endpoint.quickSwitchEnvironment', async () => {
+			await statusBarProvider.showEnvironmentPicker();
+			updateWelcomeViewContext();
 		})
 	);
 

@@ -68,6 +68,18 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "endpointCollections",
+        "contents": "%viewsWelcome.collections.empty%",
+        "when": "!endpoint.hasCollections"
+      },
+      {
+        "view": "endpointEnvironments",
+        "contents": "%viewsWelcome.environments.empty%",
+        "when": "!endpoint.hasEnvironments"
+      }
+    ],
     "commands": [
       {
         "command": "endpoint.refreshCollections",
@@ -263,6 +275,12 @@
         "command": "endpoint.copyAsCode",
         "title": "%commands.copyAsCode.title%",
         "icon": "$(code)",
+        "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.quickSwitchEnvironment",
+        "title": "%commands.quickSwitchEnvironment.title%",
+        "icon": "$(symbol-namespace)",
         "category": "Endpoint"
       }
     ],
