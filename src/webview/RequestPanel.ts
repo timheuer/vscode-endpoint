@@ -8,7 +8,7 @@ import { ResponseDisplay } from '../http/ResponseDisplay';
 import { StorageService } from '../storage/StorageService';
 import { VariableService } from '../storage/VariableService';
 import { ResponseStorage } from '../storage/ResponseStorage';
-import { maskAuthHeaders, sanitizeUrl, shouldStoreBody, truncateBody, sanitizeBody, sanitizeFormBody } from '../storage/HistorySanitizer';
+import { maskAuthHeaders, maskResponseHeaders, sanitizeUrl, shouldStoreBody, truncateBody, sanitizeBody, sanitizeFormBody } from '../storage/HistorySanitizer';
 import { getGenerator } from '../codegen';
 import { SyntaxHighlighter } from '../http/SyntaxHighlighter';
 import { DirtyStateProvider } from '../providers/DirtyStateProvider';
@@ -874,9 +874,10 @@ export class RequestPanel {
         // Apply sanitization to the URL (masks sensitive query params)
         const historyUrl = sanitizeUrl(url);
 
-        // Apply sanitization to request headers (masks auth headers)
+        // Apply sanitization to request headers - include ALL merged headers (collection defaults + request-specific)
+        // Convert the headers object back to array format for storage
         const historyHeaders = maskAuthHeaders(
-            data.headers.filter(h => h.enabled && h.key).map(h => ({ name: h.key, value: h.value, enabled: true }))
+            Object.entries(headers).map(([name, value]) => ({ name, value, enabled: true }))
         );
 
         const historyItem = createHistoryItem(
@@ -920,7 +921,7 @@ export class RequestPanel {
             const responseHeaders: { name: string; value: string; enabled: boolean }[] = Object.entries(response.headers).map(
                 ([name, value]) => ({ name, value: String(value), enabled: true })
             );
-            historyItem.responseHeaders = maskAuthHeaders(responseHeaders);
+            historyItem.responseHeaders = maskResponseHeaders(responseHeaders);
 
             // Store response body based on settings and content type
             const storeResponses = getSetting('history.storeResponses') ?? true;

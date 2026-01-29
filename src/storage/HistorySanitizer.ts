@@ -1,11 +1,25 @@
 import { RequestHeader } from '../models/Collection';
 
-// Headers that contain authentication credentials or session data
-const SENSITIVE_HEADERS = [
-    'authorization', 'x-api-key', 'x-auth-token', 'x-api-token',
-    'cookie', 'set-cookie', 'proxy-authorization',
-    'x-csrf-token', 'x-xsrf-token', 'x-amz-security-token',
-    'x-access-token', 'x-refresh-token'
+// Headers that contain authentication credentials or session data (for REQUEST headers)
+const SENSITIVE_REQUEST_HEADERS = [
+    'authorization', 'cookie', 'proxy-authorization'
+];
+
+// Headers to mask in RESPONSE headers (less aggressive - we keep set-cookie for debugging)
+const SENSITIVE_RESPONSE_HEADERS = [
+    'authorization', 'proxy-authorization'
+];
+
+// Patterns to match in header names (case-insensitive substring match)
+// Catches headers like X-Api-Key, X-Config-Key, X-Auth-Token, etc.
+const SENSITIVE_HEADER_PATTERNS = [
+    'key', 'token', 'secret', 'auth', 'credential', 'password', 'bearer', 'jwt'
+];
+
+// Headers that should NOT be masked even if they match patterns above
+// set-cookie contains "key" but we want to preserve it for debugging
+const SAFE_HEADERS = [
+    'set-cookie', 'etag', 'cache-control', 'content-type'
 ];
 
 // Query/body parameter names that commonly contain secrets
@@ -30,12 +44,41 @@ function isSensitiveKey(key: string): boolean {
 }
 
 /**
- * Masks values of sensitive authorization headers.
- * Includes: Authorization, Cookie, X-Api-Key, X-Auth-Token, CSRF tokens, etc.
+ * Check if a header name matches any sensitive pattern (substring match).
+ * Returns false for headers in the safe list even if they match patterns.
+ */
+function isSensitiveHeaderName(headerName: string): boolean {
+    const lowerName = headerName.toLowerCase();
+    // Don't mask headers in the safe list
+    if (SAFE_HEADERS.includes(lowerName)) {
+        return false;
+    }
+    return SENSITIVE_HEADER_PATTERNS.some(pattern => lowerName.includes(pattern));
+}
+
+/**
+ * Masks values of sensitive authorization headers in REQUEST headers.
+ * Matches exact header names (Authorization, Cookie) and pattern-based names (anything with key, token, secret, auth, etc.).
  */
 export function maskAuthHeaders(headers: RequestHeader[]): RequestHeader[] {
     return headers.map(header => {
-        if (SENSITIVE_HEADERS.includes(header.name.toLowerCase())) {
+        const lowerName = header.name.toLowerCase();
+        if (SENSITIVE_REQUEST_HEADERS.includes(lowerName) || isSensitiveHeaderName(lowerName)) {
+            return { ...header, value: '***' };
+        }
+        return header;
+    });
+}
+
+/**
+ * Masks values of sensitive headers in RESPONSE headers.
+ * Less aggressive than request headers - keeps Set-Cookie for debugging.
+ * Matches exact header names and pattern-based names.
+ */
+export function maskResponseHeaders(headers: RequestHeader[]): RequestHeader[] {
+    return headers.map(header => {
+        const lowerName = header.name.toLowerCase();
+        if (SENSITIVE_RESPONSE_HEADERS.includes(lowerName) || isSensitiveHeaderName(lowerName)) {
             return { ...header, value: '***' };
         }
         return header;
@@ -124,9 +167,30 @@ function sanitizeJsonValue(value: unknown): unknown {
 
 /**
  * Sanitizes form-urlencoded body content.
- * Parses key=value pairs and masks sensitive keys.
+ * Handles both JSON array format [{key,value,enabled}] from webview
+ * and URL-encoded format (key=value&key2=value2).
+ * Masks sensitive keys in both formats.
  */
 export function sanitizeFormBody(body: string): string {
+    try {
+        // First, try to parse as JSON array (webview format)
+        const parsed = JSON.parse(body);
+        if (Array.isArray(parsed)) {
+            // JSON array format: [{key: "name", value: "val", enabled: true}, ...]
+            const sanitized = parsed.map((field: { key?: string; value?: string; enabled?: boolean }) => {
+                if (field.key && isSensitiveKey(field.key)) {
+                    return { ...field, value: '***' };
+                }
+                return field;
+            });
+            return JSON.stringify(sanitized);
+        }
+        // Not an array, fall through to URL-encoded handling
+    } catch {
+        // Not JSON, try URL-encoded format
+    }
+
+    // URL-encoded format handling
     try {
         const params = new URLSearchParams(body);
         for (const [key] of params.entries()) {

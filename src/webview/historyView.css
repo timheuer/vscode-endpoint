@@ -108,28 +108,55 @@
     font-size: 13px;
 }
 
-.headers-display {
+/* Headers/Cookies Tables - same styles as Request Panel */
+.headers-table {
+    width: 100%;
+    border-collapse: collapse;
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
 }
 
-.header-row {
-    display: flex;
-    gap: 8px;
-    padding: 4px 0;
+.headers-table th {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--vscode-widget-border);
+    font-weight: 500;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.headers-table td {
+    padding: 6px 8px;
     border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+    vertical-align: top;
 }
 
-.header-row:last-child {
-    border-bottom: none;
-}
-
-.header-name {
+.headers-table td:first-child {
     color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
-    min-width: 150px;
+    white-space: nowrap;
 }
 
-.header-value {
+.headers-table td:last-child {
+    word-break: break-all;
+}
+
+.cookies-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+.cookies-table th {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--vscode-widget-border);
+    font-weight: 500;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.cookies-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
     word-break: break-all;
 }
 

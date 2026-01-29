@@ -291,6 +291,28 @@ export class HistoryPanel {
         // Status class
         const statusClass = item.statusCode && item.statusCode >= 200 && item.statusCode < 300 ? 'status-success' : 'status-error';
 
+        // Parse cookies from Set-Cookie headers
+        const cookies: { name: string; value: string; domain: string; path: string }[] = [];
+        if (item.responseHeaders) {
+            item.responseHeaders
+                .filter(h => h.name.toLowerCase() === 'set-cookie')
+                .forEach(h => {
+                    const parts = h.value.split(';').map(p => p.trim());
+                    const [nameValue, ...attrs] = parts;
+                    const [name, ...valueParts] = nameValue.split('=');
+                    const value = valueParts.join('=');
+
+                    let domain = '', path = '';
+                    attrs.forEach(attr => {
+                        const [key, val] = attr.split('=');
+                        if (key && key.toLowerCase() === 'domain') { domain = val || ''; }
+                        if (key && key.toLowerCase() === 'path') { path = val || ''; }
+                    });
+
+                    cookies.push({ name, value, domain, path });
+                });
+        }
+
         return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -363,14 +385,24 @@ export class HistoryPanel {
 
                     <!-- Request Headers Tab -->
                     <vscode-tab-panel>
-                        <div class="headers-display">
-                            ${item.headers.length > 0 ? item.headers.map(h => `
-                                <div class="header-row">
-                                    <span class="header-name">${escapeHtml(h.name)}:</span>
-                                    <span class="header-value">${escapeHtml(h.value)}</span>
-                                </div>
-                            `).join('') : '<div class="no-data">No headers</div>'}
-                        </div>
+                        ${item.headers.length > 0 ? `
+                            <table class="headers-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${item.headers.map(h => `
+                                        <tr>
+                                            <td>${escapeHtml(h.name)}</td>
+                                            <td>${escapeHtml(h.value)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div class="no-data">No headers</div>'}
                     </vscode-tab-panel>
 
                     <!-- Request Body Tab -->
@@ -410,7 +442,7 @@ export class HistoryPanel {
                 <vscode-tabs id="responseTabs" selected-index="0">
                     <vscode-tab-header slot="header">Body</vscode-tab-header>
                     <vscode-tab-header slot="header">Headers${item.responseHeaders ? ` <span class="tab-badge">${item.responseHeaders.filter(h => h.name.toLowerCase() !== 'set-cookie').length}</span>` : ''}</vscode-tab-header>
-                    <vscode-tab-header slot="header">Cookies${item.responseHeaders ? ` <span class="tab-badge">${item.responseHeaders.filter(h => h.name.toLowerCase() === 'set-cookie').length}</span>` : ''}</vscode-tab-header>
+                    <vscode-tab-header slot="header">Cookies${cookies.length > 0 ? ` <span class="tab-badge">${cookies.length}</span>` : ''}</vscode-tab-header>
 
                     <!-- Response Body Tab -->
                     <vscode-tab-panel>
@@ -429,25 +461,50 @@ export class HistoryPanel {
 
                     <!-- Response Headers Tab -->
                     <vscode-tab-panel>
-                        <div class="headers-display">
-                            ${item.responseHeaders && item.responseHeaders.filter(h => h.name.toLowerCase() !== 'set-cookie').length > 0 ? item.responseHeaders.filter(h => h.name.toLowerCase() !== 'set-cookie').map(h => `
-                                <div class="header-row">
-                                    <span class="header-name">${escapeHtml(h.name)}:</span>
-                                    <span class="header-value">${escapeHtml(h.value)}</span>
-                                </div>
-                            `).join('') : '<div class="no-data">No response headers stored</div>'}
-                        </div>
+                        ${item.responseHeaders && item.responseHeaders.filter(h => h.name.toLowerCase() !== 'set-cookie').length > 0 ? `
+                            <table class="headers-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${item.responseHeaders.filter(h => h.name.toLowerCase() !== 'set-cookie').map(h => `
+                                        <tr>
+                                            <td>${escapeHtml(h.name)}</td>
+                                            <td>${escapeHtml(h.value)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div class="no-data">No response headers stored</div>'}
                     </vscode-tab-panel>
 
                     <!-- Cookies Tab -->
                     <vscode-tab-panel>
-                        <div class="headers-display">
-                            ${item.responseHeaders && item.responseHeaders.filter(h => h.name.toLowerCase() === 'set-cookie').length > 0 ? item.responseHeaders.filter(h => h.name.toLowerCase() === 'set-cookie').map(h => `
-                                <div class="header-row">
-                                    <span class="header-value">${escapeHtml(h.value)}</span>
-                                </div>
-                            `).join('') : '<div class="no-data">No cookies in response</div>'}
-                        </div>
+                        ${cookies.length > 0 ? `
+                            <table class="cookies-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Value</th>
+                                        <th>Domain</th>
+                                        <th>Path</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${cookies.map(c => `
+                                        <tr>
+                                            <td>${escapeHtml(c.name)}</td>
+                                            <td>${escapeHtml(c.value)}</td>
+                                            <td>${escapeHtml(c.domain)}</td>
+                                            <td>${escapeHtml(c.path)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<div class="no-data">No cookies in response</div>'}
                     </vscode-tab-panel>
                 </vscode-tabs>
             </div>
