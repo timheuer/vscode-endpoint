@@ -4,6 +4,7 @@ import { EnvironmentsProvider, EnvironmentItem, VariableItem } from './providers
 import { HistoryProvider, HistoryTreeItem } from './providers/HistoryProvider';
 import { DirtyStateProvider } from './providers/DirtyStateProvider';
 import { StatusBarProvider } from './providers/StatusBarProvider';
+import { EnvironmentDiagnosticsProvider } from './providers/EnvironmentDiagnosticsProvider';
 import { RequestPanel } from './webview/RequestPanel';
 import { HistoryPanel } from './webview/HistoryPanel';
 import { CollectionSettingsPanel } from './webview/CollectionSettingsPanel';
@@ -76,6 +77,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(statusBarProvider);
 	logger.debug('Status bar provider initialized');
 
+	// Initialize environment diagnostics provider
+	const envDiagnosticsProvider = new EnvironmentDiagnosticsProvider(storageService);
+	context.subscriptions.push(envDiagnosticsProvider);
+	envDiagnosticsProvider.refresh();
+	logger.debug('Environment diagnostics provider initialized');
+
 	// Set context for welcome views based on data presence
 	const updateWelcomeViewContext = async () => {
 		const collections = await storageService.getCollectionsAsync();
@@ -109,6 +116,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			if (choice === vscode.l10n.t('Reload')) {
 				collectionsProvider.refresh();
+				envDiagnosticsProvider.refresh();
 			}
 		};
 
@@ -116,10 +124,12 @@ export function activate(context: vscode.ExtensionContext) {
 		watcher.onDidCreate(() => {
 			logger.debug('Repo collection file created');
 			collectionsProvider.refresh();
+			envDiagnosticsProvider.refresh();
 		});
 		watcher.onDidDelete(() => {
 			logger.debug('Repo collection file deleted');
 			collectionsProvider.refresh();
+			envDiagnosticsProvider.refresh();
 		});
 
 		context.subscriptions.push(watcher);
@@ -130,10 +140,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('endpoint.refreshCollections', () => {
 			collectionsProvider.refresh();
+			envDiagnosticsProvider.refresh();
 			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.addCollection', async () => {
 			await collectionsProvider.addCollection();
+			envDiagnosticsProvider.refresh();
 			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.editCollection', (item: CollectionItem) => {
@@ -141,6 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 		vscode.commands.registerCommand('endpoint.deleteCollection', async (item: CollectionItem) => {
 			await collectionsProvider.deleteCollection(item);
+			envDiagnosticsProvider.refresh();
 			updateWelcomeViewContext();
 		}),
 		vscode.commands.registerCommand('endpoint.duplicateCollection', (item: CollectionItem) => {
@@ -188,15 +201,18 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 		vscode.commands.registerCommand('endpoint.addRequest', (item: CollectionItem) => {
 			collectionsProvider.addRequest(item);
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.editRequest', (item: RequestItem) => {
 			collectionsProvider.editRequest(item);
 		}),
 		vscode.commands.registerCommand('endpoint.deleteRequest', (item: RequestItem) => {
 			collectionsProvider.deleteRequest(item);
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.duplicateRequest', (item: RequestItem) => {
 			collectionsProvider.duplicateRequest(item);
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.openRequest', (item: RequestItem) => {
 			RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
@@ -232,9 +248,11 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('endpoint.setActiveEnvironment', (item: EnvironmentItem) => {
 			environmentsProvider.setActiveEnvironment(item);
 			statusBarProvider.update();
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.quickSwitchEnvironment', async () => {
 			await statusBarProvider.showEnvironmentPicker();
+			envDiagnosticsProvider.refresh();
 			updateWelcomeViewContext();
 		})
 	);
@@ -243,15 +261,19 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('endpoint.addVariable', (item: EnvironmentItem) => {
 			environmentsProvider.addVariable(item);
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.editVariable', (item: VariableItem) => {
 			environmentsProvider.editVariable(item);
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.deleteVariable', (item: VariableItem) => {
 			environmentsProvider.deleteVariable(item);
+			envDiagnosticsProvider.refresh();
 		}),
 		vscode.commands.registerCommand('endpoint.toggleVariable', (item: VariableItem) => {
 			environmentsProvider.toggleVariable(item);
+			envDiagnosticsProvider.refresh();
 		})
 	);
 
