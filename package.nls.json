@@ -39,6 +39,7 @@
   "commands.exportCollection.title": "Export as .http",
   "commands.copyAsCode.title": "Copy as Code",
   "commands.quickSwitchEnvironment.title": "Switch Environment",
+  "commands.quickRunRequest.title": "Quick Run Request",
   "viewsWelcome.collections.empty": "No collections yet.\n[Create Collection](command:endpoint.addCollection)\n[Import from .http file](command:endpoint.import)",
   "viewsWelcome.environments.empty": "No environments configured.\n[Create Environment](command:endpoint.addEnvironment)\n\nEnvironments let you define variables like API keys and base URLs that can be switched between development and production.",
   "configuration.title": "Endpoint",

@@ -18,6 +18,8 @@ Test APIs without leaving your editor. Beautiful native GUI. Zero context switch
 | 🌍 **Environment Variables** | Switch between dev, staging, and prod with a single click |
 | 📦 **Collections** | Organize requests with shared defaults for headers and auth |
 | ⏱️ **History** | Never lose a request — automatic tracking of everything you send |
+| ⚡ **Quick Launcher** | Fuzzy search and run any request instantly with `Ctrl+Shift+X` |
+| 🔍 **Variable Diagnostics** | Problems panel warns about undefined variables before you hit send |
 
 ---
 
@@ -174,6 +176,48 @@ Every request you send is automatically tracked:
 - **Delete**: Remove individual items or clear all history
 - **Configurable Limit**: Control how many items to retain in settings
 
+### ⚡ Quick Run Request
+
+Instantly search and execute any request across all collections:
+
+- **Keyboard Shortcut**: `Ctrl+Shift+X` (Mac: `Cmd+Shift+X`)
+- **Command Palette**: "Endpoint: Quick Run Request"
+
+Features:
+
+- Fuzzy search across request names, methods, URLs, and collection names
+- HTTP method icons for quick visual scanning
+- Sends the request immediately upon selection
+
+### 🔍 Variable Diagnostics
+
+Catch undefined variables before you send — no more debugging "variable not found" errors:
+
+- **Problems Panel Integration**: View → Problems (`Ctrl+Shift+M`) shows undefined variable warnings
+- **Scans All Sources**: Checks against active environment, `.env` file, and collection variables
+- **Request Coverage**: Checks URLs, headers, body, and auth configuration
+
+Diagnostics update automatically when you:
+
+- Switch environments
+- Add/edit/delete variables
+- Modify collections or requests
+
+### 🌐 Status Bar Environment Switcher
+
+See your active environment at a glance and switch instantly:
+
+- **Status Bar**: Shows current environment name with globe icon (bottom left)
+- **One-Click Switch**: Click to open environment quick picker
+- **Clear Option**: Easily deactivate all environments
+
+### 👋 Welcome Views
+
+Friendly onboarding when you're getting started:
+
+- **Empty Collections**: Shows "Create Collection" and "Import" links
+- **Empty Environments**: Explains what environments are and how to create one
+
 ### 📥 Smart Import
 
 Import `.http` and `.rest` files with intelligent processing:
@@ -199,8 +243,11 @@ Your collections and environment metadata sync across machines via VS Code's bui
 | Action | Mac | Windows/Linux |
 |--------|-----|---------------|
 | ➕ New Request | `Cmd+Shift+R` | `Ctrl+Shift+R` |
+| ⚡ Quick Run Request | `Cmd+Shift+X` | `Ctrl+Shift+X` |
 | 📥 Import .http | `Cmd+Shift+I` | `Ctrl+Shift+I` |
 | 📤 Export Collection | `Cmd+Shift+E` | `Ctrl+Shift+E` |
+
+**Status bar:** Click the environment name in the bottom left to quickly switch environments.
 
 **Context menus:** Right-click on collections, requests, environments, and history items for all available actions including Copy as Code, Save to Collection, Duplicate, and more.
 

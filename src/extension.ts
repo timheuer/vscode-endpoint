@@ -14,6 +14,22 @@ import { Collection } from './models/Collection';
 import { createImportExportCommands, createCopyAsCodeCommand } from './commands';
 import { initializeLogger, disposeLogger, getLogger } from './logger';
 
+/**
+ * Get codicon name for HTTP method
+ */
+function getMethodIcon(method: string): string {
+	switch (method.toUpperCase()) {
+		case 'GET': return 'arrow-down';
+		case 'POST': return 'arrow-up';
+		case 'PUT': return 'arrow-swap';
+		case 'PATCH': return 'edit';
+		case 'DELETE': return 'trash';
+		case 'HEAD': return 'eye';
+		case 'OPTIONS': return 'settings';
+		default: return 'request';
+	}
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	// Initialize logger first
 	const logger = initializeLogger(context);
@@ -355,6 +371,57 @@ export function activate(context: vscode.ExtensionContext) {
 	// Code generation command
 	context.subscriptions.push(
 		vscode.commands.registerCommand('endpoint.copyAsCode', createCopyAsCodeCommand(storageService, variableService))
+	);
+
+	// Quick request launcher
+	context.subscriptions.push(
+		vscode.commands.registerCommand('endpoint.quickRunRequest', async () => {
+			const collections = await storageService.getCollectionsAsync();
+
+			if (collections.length === 0) {
+				const create = await vscode.window.showInformationMessage(
+					vscode.l10n.t('No collections found. Create one first?'),
+					vscode.l10n.t('Create Collection')
+				);
+				if (create) {
+					await vscode.commands.executeCommand('endpoint.addCollection');
+				}
+				return;
+			}
+
+			// Build list of all requests with their collections
+			const items: (vscode.QuickPickItem & { request: typeof collections[0]['requests'][0]; collectionId: string })[] = [];
+
+			for (const collection of collections) {
+				for (const request of collection.requests) {
+					const methodIcon = getMethodIcon(request.method);
+					items.push({
+						label: `$(${methodIcon}) ${request.name}`,
+						description: request.method,
+						detail: `${collection.name} • ${request.url}`,
+						request,
+						collectionId: collection.id
+					});
+				}
+			}
+
+			if (items.length === 0) {
+				vscode.window.showInformationMessage(vscode.l10n.t('No requests found in any collection.'));
+				return;
+			}
+
+			const selected = await vscode.window.showQuickPick(items, {
+				placeHolder: vscode.l10n.t('Search and select a request to run'),
+				title: vscode.l10n.t('Quick Run Request'),
+				matchOnDescription: true,
+				matchOnDetail: true
+			});
+
+			if (selected) {
+				const panel = RequestPanel.openRequest(context.extensionUri, selected.request, selected.collectionId);
+				panel.sendImmediately();
+			}
+		})
 	);
 
 	logger.info('Endpoint extension activated');

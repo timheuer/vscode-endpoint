@@ -282,6 +282,12 @@
         "title": "%commands.quickSwitchEnvironment.title%",
         "icon": "$(symbol-namespace)",
         "category": "Endpoint"
+      },
+      {
+        "command": "endpoint.quickRunRequest",
+        "title": "%commands.quickRunRequest.title%",
+        "icon": "$(play)",
+        "category": "Endpoint"
       }
     ],
     "menus": {
@@ -545,6 +551,11 @@
         "command": "endpoint.export",
         "key": "ctrl+shift+e",
         "mac": "cmd+shift+e"
+      },
+      {
+        "command": "endpoint.quickRunRequest",
+        "key": "ctrl+shift+x",
+        "mac": "cmd+shift+x"
       }
     ],
     "configuration": {
