@@ -116,12 +116,13 @@ API_KEY=your-secret-key
 
 **Built-in variables:**
 
-| Variable | What it does |
-|----------|--------------|
-| `{{$timestamp}}` | ISO 8601 timestamp |
-| `{{$guid}}` | Fresh UUID v4 |
-| `{{$randomint}}` | Random integer |
-| `{{$env:VAR_NAME}}` | System env variable |
+| Variable | What it does | Example |
+|----------|--------------|---------|
+| `{{$timestamp}}` | ISO 8601 timestamp | `2026-01-30T12:00:00.000Z` |
+| `{{$timestamp -1 d}}` | Timestamp with offset | Yesterday's timestamp |
+| `{{$guid}}` | Fresh UUID v4 | `a1b2c3d4-...` |
+| `{{$randomInt 1 100}}` | Random integer (min, max) | Random number 1-100 |
+| `{{$env:VAR_NAME}}` | System env variable | Value from environment |
 
 ### 📦 Collection Defaults
 
@@ -303,15 +304,32 @@ Use `{{variableName}}` anywhere — URLs, headers, body.
 
 ### Built-in Variables
 
-| Variable | Alias | Description |
-|----------|-------|-------------|
-| `{{$timestamp}}` | `{{$datetime}}` | ISO 8601 timestamp |
-| `{{$timestamp_unix}}` | `{{$unix}}` | Unix timestamp (seconds) |
-| `{{$date}}` | | Date only (YYYY-MM-DD) |
-| `{{$time}}` | | Time only (HH:MM:SS) |
-| `{{$guid}}` | `{{$uuid}}` | UUID v4 |
-| `{{$randomint}}` | | Random integer (0-999999) |
-| `{{$env:VAR_NAME}}` | | System environment variable |
+| Variable | Alias | Description | Example |
+|----------|-------|-------------|---------|
+| `{{$timestamp}}` | `{{$datetime}}` | ISO 8601 timestamp | `2026-01-30T12:00:00.000Z` |
+| `{{$timestamp offset unit}}` | | Timestamp with offset | `{{$timestamp -1 d}}` = yesterday |
+| `{{$timestamp_unix}}` | `{{$unix}}` | Unix timestamp (seconds) | `1738238400` |
+| `{{$timestamp_unix offset unit}}` | | Unix timestamp with offset | `{{$unix -1 d}}` = yesterday |
+| `{{$date}}` | | Date only (YYYY-MM-DD) | `2026-01-30` |
+| `{{$date offset unit}}` | | Date with offset | `{{$date -7 d}}` = 7 days ago |
+| `{{$time}}` | | Time only (HH:MM:SS) | `12:00:00` |
+| `{{$time offset unit}}` | | Time with offset | `{{$time 2 h}}` = 2 hours from now |
+| `{{$guid}}` | `{{$uuid}}` | UUID v4 | `a1b2c3d4-e5f6-...` |
+| `{{$randomInt}}` | | Random integer (0-999999) | `542893` |
+| `{{$randomInt min max}}` | | Random integer in range | `{{$randomInt 1 100}}` |
+| `{{$localDatetime}}` | | Local datetime (ISO 8601) | With timezone offset |
+| `{{$localDatetime rfc1123}}` | | Local datetime (RFC 1123) | HTTP date format |
+| `{{$env:VAR_NAME}}` | | System environment variable | Value from environment |
+
+**Time offset units:** `y` (years), `M` (months), `w` (weeks), `d` (days), `h` (hours), `m` (minutes), `s` (seconds), `ms` (milliseconds)
+
+**Examples:**
+- `{{$timestamp -7 d}}` = 7 days ago
+- `{{$timestamp 2 h}}` = 2 hours from now
+- `{{$date -1 d}}` = Yesterday's date
+- `{{$unix 1 w}}` = Unix timestamp 1 week from now
+- `{{$randomInt 1000 9999}}` = Random 4-digit number
+- `{{$localDatetime -1 d}}` = Yesterday in local time
 
 ### Setting Up Environments
 
