@@ -230,11 +230,11 @@ export function activate(context: vscode.ExtensionContext) {
 			collectionsProvider.duplicateRequest(item);
 			envDiagnosticsProvider.refresh();
 		}),
-		vscode.commands.registerCommand('endpoint.openRequest', (item: RequestItem) => {
-			RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
+		vscode.commands.registerCommand('endpoint.openRequest', async (item: RequestItem) => {
+			await RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
 		}),
-		vscode.commands.registerCommand('endpoint.sendRequest', (item: RequestItem) => {
-			const panel = RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
+		vscode.commands.registerCommand('endpoint.sendRequest', async (item: RequestItem) => {
+			const panel = await RequestPanel.openRequest(context.extensionUri, item.request, item.collectionId);
 			panel.sendImmediately();
 		})
 	);
@@ -418,7 +418,7 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 
 			if (selected) {
-				const panel = RequestPanel.openRequest(context.extensionUri, selected.request, selected.collectionId);
+				const panel = await RequestPanel.openRequest(context.extensionUri, selected.request, selected.collectionId);
 				panel.sendImmediately();
 			}
 		})

@@ -130,12 +130,12 @@ export class RequestPanel {
         return requestPanel;
     }
 
-    public static openRequest(extensionUri: vscode.Uri, request: Request, collectionId?: string): RequestPanel {
+    public static async openRequest(extensionUri: vscode.Uri, request: Request, collectionId?: string): Promise<RequestPanel> {
         const requestData = requestToRequestData(request);
 
         // Fetch inherited headers and auth from collection if available
         if (collectionId && RequestPanel._storageService) {
-            const collection = RequestPanel._storageService.getCollection(collectionId);
+            const collection = await RequestPanel._storageService.getCollectionAsync(collectionId);
             if (collection) {
                 // Inherited headers
                 if (collection.defaultHeaders && collection.defaultHeaders.length > 0) {
@@ -168,7 +168,7 @@ export class RequestPanel {
 
         // Send available requests to the webview
         if (collectionId && RequestPanel._storageService) {
-            const collection = RequestPanel._storageService.getCollection(collectionId);
+            const collection = await RequestPanel._storageService.getCollectionAsync(collectionId);
             if (collection) {
                 panel._sendAvailableRequests(collection.requests, request.id);
             }
@@ -562,7 +562,7 @@ export class RequestPanel {
         }
 
         // Get the collection and find the pre-request
-        const collection = RequestPanel._storageService.getCollection(this._collectionId);
+        const collection = await RequestPanel._storageService.getCollectionAsync(this._collectionId);
         if (!collection) {
             vscode.window.showErrorMessage(vscode.l10n.t('Collection not found'));
             return false;
@@ -746,7 +746,7 @@ export class RequestPanel {
         // Get collection defaults if available
         let collectionDefaults: { headers?: { name: string; value: string; enabled: boolean }[]; auth?: any } = {};
         if (this._collectionId) {
-            const collection = RequestPanel._storageService.getCollection(this._collectionId);
+            const collection = await RequestPanel._storageService.getCollectionAsync(this._collectionId);
             if (collection) {
                 collectionDefaults = {
                     headers: collection.defaultHeaders,

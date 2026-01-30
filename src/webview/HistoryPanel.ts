@@ -147,7 +147,7 @@ export class HistoryPanel {
         }
 
         // Open the request in a RequestPanel
-        RequestPanel.openRequest(this._extensionUri, request, collectionId);
+        await RequestPanel.openRequest(this._extensionUri, request, collectionId);
     }
 
     private async _saveToCollection(): Promise<void> {
