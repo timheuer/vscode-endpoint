@@ -632,6 +632,51 @@ vscode-checkbox {
     font-style: italic;
 }
 
+/* Variable Value Tooltip */
+.variable-tooltip {
+    position: fixed;
+    z-index: 10001;
+    padding: 6px 10px;
+    background-color: var(--vscode-editorHoverWidget-background, #252526);
+    border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+    border-radius: 3px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: var(--vscode-editor-font-size, 13px);
+    color: var(--vscode-foreground);
+    max-width: 400px;
+    word-break: break-all;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+.variable-tooltip.visible {
+    display: block;
+}
+
+.variable-tooltip-name {
+    color: var(--vscode-symbolIcon-variableForeground, #75beff);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.variable-tooltip-value {
+    color: var(--vscode-debugTokenExpression-string, #ce9178);
+}
+
+.variable-tooltip-unresolved {
+    color: var(--vscode-editorWarning-foreground, #cca700);
+    font-style: italic;
+}
+
+.variable-tooltip-source {
+    color: var(--vscode-descriptionForeground);
+    font-size: 11px;
+    margin-top: 4px;
+    border-top: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.3));
+    padding-top: 4px;
+}
+
 /* Code Snippet Tab Styles */
 .code-snippet-controls {
     display: flex;

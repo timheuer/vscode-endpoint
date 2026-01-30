@@ -74,6 +74,9 @@ export class CollectionSettingsPanel {
             case 'getAvailableVariables':
                 this._getAvailableVariables();
                 break;
+            case 'resolveVariable':
+                this._resolveVariable(message.variableName);
+                break;
             case 'convertToRepo':
                 await this._convertToRepo();
                 break;
@@ -144,6 +147,68 @@ export class CollectionSettingsPanel {
         }
     }
 
+    private async _resolveVariable(variableName: string): Promise<void> {
+        try {
+            const variableService = new VariableService(this._storageService);
+            
+            // Check if it's a built-in variable (starts with $)
+            if (variableName.startsWith('$')) {
+                const builtinPreviews: Record<string, string> = {
+                    '$timestamp': new Date().toISOString(),
+                    '$guid': 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
+                    '$uuid': 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
+                    '$date': new Date().toISOString().split('T')[0],
+                    '$time': new Date().toTimeString().split(' ')[0],
+                    '$randomint': Math.floor(Math.random() * 1000).toString(),
+                    '$datetime': new Date().toISOString(),
+                    '$timestamp_unix': Math.floor(Date.now() / 1000).toString()
+                };
+                
+                const preview = builtinPreviews[variableName];
+                this._panel.webview.postMessage({ 
+                    type: 'variableResolved', 
+                    variableName, 
+                    resolvedValue: preview !== undefined ? `(dynamic) ${preview}` : null,
+                    source: preview !== undefined ? 'Built-in' : null
+                });
+                return;
+            }
+            
+            // Get variables preview to determine source
+            const preview = await variableService.getVariablesPreview(this._collection.id);
+            
+            // Determine source with precedence: environment > collection > dotenv
+            let resolvedValue: string | null = null;
+            let source: string | null = null;
+            
+            if (preview.environment[variableName] !== undefined) {
+                resolvedValue = preview.environment[variableName];
+                const activeEnv = await this._storageService.getActiveEnvironment();
+                source = activeEnv ? `Environment: ${activeEnv.name}` : 'Environment';
+            } else if (preview.collection[variableName] !== undefined) {
+                resolvedValue = preview.collection[variableName];
+                source = 'Collection variables';
+            } else if (preview.dotenv[variableName] !== undefined) {
+                resolvedValue = preview.dotenv[variableName];
+                source = '.env file';
+            }
+            
+            this._panel.webview.postMessage({ 
+                type: 'variableResolved', 
+                variableName, 
+                resolvedValue,
+                source
+            });
+        } catch (error) {
+            this._panel.webview.postMessage({ 
+                type: 'variableResolved', 
+                variableName, 
+                resolvedValue: null,
+                source: null
+            });
+        }
+    }
+
     private async _saveSettings(data: { headers: RequestHeader[]; auth: AuthConfig }): Promise<void> {
         this._collection.defaultHeaders = data.headers;
         this._collection.defaultAuth = data.auth;
@@ -183,6 +248,10 @@ export class CollectionSettingsPanel {
 <body>
     <!-- Autocomplete dropdown -->
     <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+    
+    <!-- Variable value tooltip -->
+    <div id="variableTooltip" class="variable-tooltip"></div>
+    
     <h2>Collection Settings: ${escapeHtml(this._collection.name)}</h2>
     
     <div class="section">
@@ -321,6 +390,10 @@ export class CollectionSettingsPanel {
             let autocompleteStartPos = 0;
             let selectedIndex = -1;
             
+            // Variable tooltip state
+            let resolvedVariablesCache = {};
+            let pendingVariableResolve = null;
+            
             // Request available variables
             vscode.postMessage({ type: 'getAvailableVariables' });
             
@@ -329,6 +402,19 @@ export class CollectionSettingsPanel {
                 const message = event.data;
                 if (message.type === 'variablesList') {
                     availableVariables = message.data || [];
+                    // Clear resolved variables cache when variable list updates
+                    resolvedVariablesCache = {};
+                } else if (message.type === 'variableResolved') {
+                    // Cache the resolved value and source
+                    resolvedVariablesCache[message.variableName] = { 
+                        value: message.resolvedValue, 
+                        source: message.source 
+                    };
+                    // Show tooltip if this is the pending request
+                    if (pendingVariableResolve && pendingVariableResolve.variableName === message.variableName) {
+                        displayTooltip(message.variableName, message.resolvedValue, message.source, pendingVariableResolve.mouseX, pendingVariableResolve.mouseY);
+                        pendingVariableResolve = null;
+                    }
                 }
             });
             
@@ -577,6 +663,155 @@ export class CollectionSettingsPanel {
                     hideAutocomplete();
                 }
             }, true);
+
+            // Variable hover tooltip functionality
+            const variableTooltip = document.getElementById('variableTooltip');
+            let tooltipTimeout = null;
+            let currentTooltipTarget = null;
+            
+            function findVariableAtPosition(text, position) {
+                let match;
+                const pattern = /\{\{([^{}]+)\}\}/g;
+                while ((match = pattern.exec(text)) !== null) {
+                    const start = match.index;
+                    const end = match.index + match[0].length;
+                    if (position >= start && position <= end) {
+                        return {
+                            name: match[1].trim(),
+                            fullMatch: match[0],
+                            start: start,
+                            end: end
+                        };
+                    }
+                }
+                return null;
+            }
+            
+            function getCharacterPositionFromMouse(element, mouseX, mouseY) {
+                const input = element.tagName === 'VSCODE-TEXTFIELD' 
+                    ? (element.shadowRoot?.querySelector('input') || element)
+                    : element;
+                
+                const text = input.value || '';
+                if (!text) return -1;
+                
+                const tempSpan = document.createElement('span');
+                const computedStyle = window.getComputedStyle(input);
+                tempSpan.style.cssText = \`
+                    font-family: \${computedStyle.fontFamily};
+                    font-size: \${computedStyle.fontSize};
+                    letter-spacing: \${computedStyle.letterSpacing};
+                    white-space: pre;
+                    position: absolute;
+                    visibility: hidden;
+                \`;
+                document.body.appendChild(tempSpan);
+                
+                const inputRect = input.getBoundingClientRect();
+                const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+                const scrollLeft = input.scrollLeft || 0;
+                const relativeX = mouseX - inputRect.left - paddingLeft + scrollLeft;
+                
+                let left = 0;
+                let right = text.length;
+                
+                while (left < right) {
+                    const mid = Math.floor((left + right) / 2);
+                    tempSpan.textContent = text.substring(0, mid);
+                    const width = tempSpan.offsetWidth;
+                    
+                    if (width < relativeX) {
+                        left = mid + 1;
+                    } else {
+                        right = mid;
+                    }
+                }
+                
+                document.body.removeChild(tempSpan);
+                return left;
+            }
+            
+            function showVariableTooltip(element, variableName, mouseX, mouseY) {
+                if (resolvedVariablesCache[variableName] !== undefined) {
+                    const cached = resolvedVariablesCache[variableName];
+                    displayTooltip(variableName, cached.value, cached.source, mouseX, mouseY);
+                    return;
+                }
+                
+                pendingVariableResolve = { variableName, mouseX, mouseY };
+                vscode.postMessage({ type: 'resolveVariable', variableName: variableName });
+            }
+            
+            function displayTooltip(variableName, resolvedValue, source, mouseX, mouseY) {
+                const isResolved = resolvedValue !== null && resolvedValue !== undefined;
+                const displayValue = isResolved ? resolvedValue : 'undefined';
+                
+                let tooltipHtml = \`<div class="variable-tooltip-name">{{\${escapeHtmlInJs(variableName)}}}</div>\`;
+                tooltipHtml += \`<div class="\${isResolved ? 'variable-tooltip-value' : 'variable-tooltip-unresolved'}">\${escapeHtmlInJs(displayValue)}</div>\`;
+                
+                if (source) {
+                    tooltipHtml += \`<div class="variable-tooltip-source">Resolved by: \${escapeHtmlInJs(source)}</div>\`;
+                }
+                
+                variableTooltip.innerHTML = tooltipHtml;
+                
+                variableTooltip.style.left = mouseX + 10 + 'px';
+                variableTooltip.style.top = mouseY + 10 + 'px';
+                
+                const tooltipRect = variableTooltip.getBoundingClientRect();
+                if (tooltipRect.right > window.innerWidth) {
+                    variableTooltip.style.left = (mouseX - tooltipRect.width - 10) + 'px';
+                }
+                if (tooltipRect.bottom > window.innerHeight) {
+                    variableTooltip.style.top = (mouseY - tooltipRect.height - 10) + 'px';
+                }
+                
+                variableTooltip.classList.add('visible');
+            }
+            
+            function hideVariableTooltip() {
+                variableTooltip.classList.remove('visible');
+                currentTooltipTarget = null;
+                pendingVariableResolve = null;
+                if (tooltipTimeout) {
+                    clearTimeout(tooltipTimeout);
+                    tooltipTimeout = null;
+                }
+            }
+            
+            document.addEventListener('mousemove', (e) => {
+                const target = e.target;
+                
+                if (!isAutocompleteField(target)) {
+                    if (currentTooltipTarget) {
+                        hideVariableTooltip();
+                    }
+                    return;
+                }
+                
+                if (tooltipTimeout) {
+                    clearTimeout(tooltipTimeout);
+                }
+                
+                tooltipTimeout = setTimeout(() => {
+                    const charPos = getCharacterPositionFromMouse(target, e.clientX, e.clientY);
+                    const text = getValue(target);
+                    const variable = findVariableAtPosition(text, charPos);
+                    
+                    if (variable) {
+                        currentTooltipTarget = target;
+                        showVariableTooltip(target, variable.name, e.clientX, e.clientY);
+                    } else if (currentTooltipTarget) {
+                        hideVariableTooltip();
+                    }
+                }, 200);
+            });
+            
+            document.addEventListener('mouseout', (e) => {
+                if (isAutocompleteField(e.target) && !isAutocompleteField(e.relatedTarget)) {
+                    hideVariableTooltip();
+                }
+            });
 
             function collectHeaderRows() {
                 const rows = [];

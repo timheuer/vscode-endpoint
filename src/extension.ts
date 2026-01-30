@@ -245,51 +245,62 @@ export function activate(context: vscode.ExtensionContext) {
 			environmentsProvider.refresh();
 			statusBarProvider.update();
 			updateWelcomeViewContext();
+			RequestPanel.refreshAllVariables();
 		}),
 		vscode.commands.registerCommand('endpoint.addEnvironment', async () => {
 			await environmentsProvider.addEnvironment();
 			updateWelcomeViewContext();
+			RequestPanel.refreshAllVariables();
 		}),
-		vscode.commands.registerCommand('endpoint.editEnvironment', (item: EnvironmentItem) => {
-			environmentsProvider.editEnvironment(item);
+		vscode.commands.registerCommand('endpoint.editEnvironment', async (item: EnvironmentItem) => {
+			await environmentsProvider.editEnvironment(item);
+			RequestPanel.refreshAllVariables();
 		}),
 		vscode.commands.registerCommand('endpoint.deleteEnvironment', async (item: EnvironmentItem) => {
 			await environmentsProvider.deleteEnvironment(item);
 			statusBarProvider.update();
 			updateWelcomeViewContext();
+			RequestPanel.refreshAllVariables();
 		}),
-		vscode.commands.registerCommand('endpoint.duplicateEnvironment', (item: EnvironmentItem) => {
-			environmentsProvider.duplicateEnvironment(item);
+		vscode.commands.registerCommand('endpoint.duplicateEnvironment', async (item: EnvironmentItem) => {
+			await environmentsProvider.duplicateEnvironment(item);
+			RequestPanel.refreshAllVariables();
 		}),
-		vscode.commands.registerCommand('endpoint.setActiveEnvironment', (item: EnvironmentItem) => {
-			environmentsProvider.setActiveEnvironment(item);
+		vscode.commands.registerCommand('endpoint.setActiveEnvironment', async (item: EnvironmentItem) => {
+			await environmentsProvider.setActiveEnvironment(item);
 			statusBarProvider.update();
 			envDiagnosticsProvider.refresh();
+			RequestPanel.refreshAllVariables();
 		}),
 		vscode.commands.registerCommand('endpoint.quickSwitchEnvironment', async () => {
 			await statusBarProvider.showEnvironmentPicker();
 			envDiagnosticsProvider.refresh();
 			updateWelcomeViewContext();
+			RequestPanel.refreshAllVariables();
 		})
 	);
 
 	// Variable commands
 	context.subscriptions.push(
-		vscode.commands.registerCommand('endpoint.addVariable', (item: EnvironmentItem) => {
-			environmentsProvider.addVariable(item);
+		vscode.commands.registerCommand('endpoint.addVariable', async (item: EnvironmentItem) => {
+			await environmentsProvider.addVariable(item);
 			envDiagnosticsProvider.refresh();
+			RequestPanel.refreshAllVariables();
 		}),
-		vscode.commands.registerCommand('endpoint.editVariable', (item: VariableItem) => {
-			environmentsProvider.editVariable(item);
+		vscode.commands.registerCommand('endpoint.editVariable', async (item: VariableItem) => {
+			await environmentsProvider.editVariable(item);
 			envDiagnosticsProvider.refresh();
+			RequestPanel.refreshAllVariables();
 		}),
-		vscode.commands.registerCommand('endpoint.deleteVariable', (item: VariableItem) => {
-			environmentsProvider.deleteVariable(item);
+		vscode.commands.registerCommand('endpoint.deleteVariable', async (item: VariableItem) => {
+			await environmentsProvider.deleteVariable(item);
 			envDiagnosticsProvider.refresh();
+			RequestPanel.refreshAllVariables();
 		}),
-		vscode.commands.registerCommand('endpoint.toggleVariable', (item: VariableItem) => {
-			environmentsProvider.toggleVariable(item);
+		vscode.commands.registerCommand('endpoint.toggleVariable', async (item: VariableItem) => {
+			await environmentsProvider.toggleVariable(item);
 			envDiagnosticsProvider.refresh();
+			RequestPanel.refreshAllVariables();
 		})
 	);
 

@@ -310,6 +310,9 @@ export class RequestPanel {
             case 'getAvailableVariables':
                 this._getAvailableVariables();
                 break;
+            case 'resolveVariable':
+                this._resolveVariable(message.variableName);
+                break;
             case 'generateCodeSnippet':
                 this._generateCodeSnippet(message.data, message.language, message.resolveVariables);
                 break;
@@ -361,6 +364,78 @@ export class RequestPanel {
         } catch (error) {
             // Return just built-ins on error
             this._panel.webview.postMessage({ type: 'variablesList', data: variables });
+        }
+    }
+
+    private async _resolveVariable(variableName: string): Promise<void> {
+        if (!RequestPanel._variableService || !RequestPanel._storageService) {
+            this._panel.webview.postMessage({ 
+                type: 'variableResolved', 
+                variableName, 
+                resolvedValue: null,
+                source: null
+            });
+            return;
+        }
+
+        try {
+            // Check if it's a built-in variable (starts with $)
+            if (variableName.startsWith('$')) {
+                // Built-in variables are resolved dynamically, return a sample/preview
+                const builtinPreviews: Record<string, string> = {
+                    '$timestamp': new Date().toISOString(),
+                    '$guid': 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
+                    '$uuid': 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
+                    '$date': new Date().toISOString().split('T')[0],
+                    '$time': new Date().toTimeString().split(' ')[0],
+                    '$randomint': Math.floor(Math.random() * 1000).toString(),
+                    '$datetime': new Date().toISOString(),
+                    '$timestamp_unix': Math.floor(Date.now() / 1000).toString()
+                };
+                
+                const preview = builtinPreviews[variableName];
+                this._panel.webview.postMessage({ 
+                    type: 'variableResolved', 
+                    variableName, 
+                    resolvedValue: preview !== undefined ? `(dynamic) ${preview}` : null,
+                    source: preview !== undefined ? 'Built-in' : null
+                });
+                return;
+            }
+            
+            // Get variables preview to determine source
+            const preview = await RequestPanel._variableService.getVariablesPreview(this._collectionId);
+            
+            // Determine source with precedence: environment > collection > dotenv
+            let resolvedValue: string | null = null;
+            let source: string | null = null;
+            
+            if (preview.environment[variableName] !== undefined) {
+                resolvedValue = preview.environment[variableName];
+                // Get the active environment name
+                const activeEnv = await RequestPanel._storageService.getActiveEnvironment();
+                source = activeEnv ? `Environment: ${activeEnv.name}` : 'Environment';
+            } else if (preview.collection[variableName] !== undefined) {
+                resolvedValue = preview.collection[variableName];
+                source = 'Collection variables';
+            } else if (preview.dotenv[variableName] !== undefined) {
+                resolvedValue = preview.dotenv[variableName];
+                source = '.env file';
+            }
+            
+            this._panel.webview.postMessage({ 
+                type: 'variableResolved', 
+                variableName, 
+                resolvedValue,
+                source
+            });
+        } catch (error) {
+            this._panel.webview.postMessage({ 
+                type: 'variableResolved', 
+                variableName, 
+                resolvedValue: null,
+                source: null
+            });
         }
     }
 
@@ -1241,6 +1316,20 @@ export class RequestPanel {
 
     public dispose(): void {
         this._cleanup();
+    }
+
+    /**
+     * Refresh variables list on all open RequestPanel instances.
+     * Call this when environments or variables change to update autocomplete and tooltips.
+     */
+    public static refreshAllVariables(): void {
+        for (const panel of RequestPanel.panels.values()) {
+            panel._getAvailableVariables();
+        }
+        // Also refresh the current "new request" panel if it exists
+        if (RequestPanel.currentPanel && !RequestPanel.panels.has(RequestPanel.currentPanel._requestId || '')) {
+            RequestPanel.currentPanel._getAvailableVariables();
+        }
     }
 }
 
