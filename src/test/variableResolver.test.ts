@@ -67,6 +67,12 @@ suite('Variable Resolver Test Suite', () => {
             assert.ok(num >= -10 && num <= 10, `Should be between -10 and 10, got ${num}`);
         });
 
+        test('should swap min and max if reversed {{$randomInt 100 1}}', () => {
+            const result = resolveVariables('{{$randomInt 100 1}}', {});
+            const num = parseInt(result, 10);
+            assert.ok(num >= 1 && num <= 100, `Should swap and be between 1 and 100, got ${num}`);
+        });
+
         test('should handle case-insensitive {{$RANDOMINT 1 100}}', () => {
             const result = resolveVariables('{{$RANDOMINT 1 100}}', {});
             const num = parseInt(result, 10);
@@ -169,6 +175,28 @@ suite('Variable Resolver Test Suite', () => {
             // Should be HH:MM:SS format
             assert.ok(/^\d{2}:\d{2}:\d{2}$/.test(result), 'Should be in HH:MM:SS format');
         });
+
+        test('should resolve {{$timestamp_unix -1 d}} for yesterday Unix timestamp', () => {
+            const now = new Date();
+            const result = resolveVariables('{{$timestamp_unix -1 d}}', {});
+            const timestamp = parseInt(result, 10);
+            
+            const expectedTimestamp = Math.floor((now.getTime() - 24 * 60 * 60 * 1000) / 1000);
+            const diff = Math.abs(timestamp - expectedTimestamp);
+            
+            assert.ok(diff <= 2, `Should be ~yesterday's Unix timestamp, diff: ${diff} seconds`);
+        });
+
+        test('should resolve {{$unix 2 h}} for 2 hours from now Unix timestamp', () => {
+            const now = new Date();
+            const result = resolveVariables('{{$unix 2 h}}', {});
+            const timestamp = parseInt(result, 10);
+            
+            const expectedTimestamp = Math.floor((now.getTime() + 2 * 60 * 60 * 1000) / 1000);
+            const diff = Math.abs(timestamp - expectedTimestamp);
+            
+            assert.ok(diff <= 2, `Should be ~2 hours from now Unix timestamp, diff: ${diff} seconds`);
+        });
     });
 
     suite('$localDatetime Variable', () => {
@@ -197,6 +225,16 @@ suite('Variable Resolver Test Suite', () => {
         test('should resolve {{$localDatetime rfc1123 -1 d}} with format and offset', () => {
             const result = resolveVariables('{{$localDatetime rfc1123 -1 d}}', {});
             assert.ok(/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(result));
+        });
+
+        test('should handle case-insensitive format {{$localDatetime RFC1123}}', () => {
+            const result = resolveVariables('{{$localDatetime RFC1123}}', {});
+            assert.ok(/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(result), 'Should handle uppercase format');
+        });
+
+        test('should handle case-insensitive format {{$localDatetime ISO8601}}', () => {
+            const result = resolveVariables('{{$localDatetime ISO8601}}', {});
+            assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/.test(result), 'Should handle uppercase format');
         });
     });
 

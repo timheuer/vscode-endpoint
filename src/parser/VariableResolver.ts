@@ -135,9 +135,13 @@ function resolveBuiltInVariable(name: string): string | null {
  */
 function resolveRandomInt(params: string[]): string {
     if (params.length >= 2) {
-        const min = parseInt(params[0], 10);
-        const max = parseInt(params[1], 10);
+        let min = parseInt(params[0], 10);
+        let max = parseInt(params[1], 10);
         if (!isNaN(min) && !isNaN(max)) {
+            // Swap if min > max to handle user error gracefully
+            if (min > max) {
+                [min, max] = [max, min];
+            }
             // Generate random integer between min (inclusive) and max (inclusive)
             return Math.floor(Math.random() * (max - min + 1) + min).toString();
         }
@@ -152,43 +156,48 @@ function resolveRandomInt(params: string[]): string {
  * Units: y (years), M (months), w (weeks), d (days), h (hours), m (minutes), s (seconds), ms (milliseconds)
  */
 function resolveTimestampVariable(params: string[]): string {
-    let date = new Date();
+    const now = new Date();
     
     if (params.length >= 2) {
         const offset = parseInt(params[0], 10);
         const unit = params[1];
         
         if (!isNaN(offset)) {
+            // Calculate offset in milliseconds
+            let offsetMs = 0;
             switch (unit) {
                 case 'y':
-                    date = new Date(date.setFullYear(date.getFullYear() + offset));
+                    offsetMs = offset * 365.25 * 24 * 60 * 60 * 1000;
                     break;
                 case 'M':
-                    date = new Date(date.setMonth(date.getMonth() + offset));
+                    offsetMs = offset * 30.44 * 24 * 60 * 60 * 1000; // Average month
                     break;
                 case 'w':
-                    date = new Date(date.setDate(date.getDate() + offset * 7));
+                    offsetMs = offset * 7 * 24 * 60 * 60 * 1000;
                     break;
                 case 'd':
-                    date = new Date(date.setDate(date.getDate() + offset));
+                    offsetMs = offset * 24 * 60 * 60 * 1000;
                     break;
                 case 'h':
-                    date = new Date(date.setHours(date.getHours() + offset));
+                    offsetMs = offset * 60 * 60 * 1000;
                     break;
                 case 'm':
-                    date = new Date(date.setMinutes(date.getMinutes() + offset));
+                    offsetMs = offset * 60 * 1000;
                     break;
                 case 's':
-                    date = new Date(date.setSeconds(date.getSeconds() + offset));
+                    offsetMs = offset * 1000;
                     break;
                 case 'ms':
-                    date = new Date(date.setMilliseconds(date.getMilliseconds() + offset));
+                    offsetMs = offset;
                     break;
             }
+            
+            const date = new Date(now.getTime() + offsetMs);
+            return date.toISOString();
         }
     }
     
-    return date.toISOString();
+    return now.toISOString();
 }
 
 /**
@@ -202,9 +211,10 @@ function resolveLocalDatetimeVariable(params: string[]): string {
     
     // Parse parameters
     if (params.length > 0) {
-        // Check if first param is a format
-        if (params[0] === 'rfc1123' || params[0] === 'iso8601') {
-            format = params[0];
+        // Check if first param is a format (case-insensitive)
+        const firstParam = params[0].toLowerCase();
+        if (firstParam === 'rfc1123' || firstParam === 'iso8601') {
+            format = firstParam;
             offsetParams = params.slice(1);
         } else {
             // No format specified, params are offset

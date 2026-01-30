@@ -309,8 +309,11 @@ Use `{{variableName}}` anywhere — URLs, headers, body.
 | `{{$timestamp}}` | `{{$datetime}}` | ISO 8601 timestamp | `2026-01-30T12:00:00.000Z` |
 | `{{$timestamp offset unit}}` | | Timestamp with offset | `{{$timestamp -1 d}}` = yesterday |
 | `{{$timestamp_unix}}` | `{{$unix}}` | Unix timestamp (seconds) | `1738238400` |
+| `{{$timestamp_unix offset unit}}` | | Unix timestamp with offset | `{{$unix -1 d}}` = yesterday |
 | `{{$date}}` | | Date only (YYYY-MM-DD) | `2026-01-30` |
+| `{{$date offset unit}}` | | Date with offset | `{{$date -7 d}}` = 7 days ago |
 | `{{$time}}` | | Time only (HH:MM:SS) | `12:00:00` |
+| `{{$time offset unit}}` | | Time with offset | `{{$time 2 h}}` = 2 hours from now |
 | `{{$guid}}` | `{{$uuid}}` | UUID v4 | `a1b2c3d4-e5f6-...` |
 | `{{$randomInt}}` | | Random integer (0-999999) | `542893` |
 | `{{$randomInt min max}}` | | Random integer in range | `{{$randomInt 1 100}}` |
@@ -323,6 +326,8 @@ Use `{{variableName}}` anywhere — URLs, headers, body.
 **Examples:**
 - `{{$timestamp -7 d}}` = 7 days ago
 - `{{$timestamp 2 h}}` = 2 hours from now
+- `{{$date -1 d}}` = Yesterday's date
+- `{{$unix 1 w}}` = Unix timestamp 1 week from now
 - `{{$randomInt 1000 9999}}` = Random 4-digit number
 - `{{$localDatetime -1 d}}` = Yesterday in local time
 
