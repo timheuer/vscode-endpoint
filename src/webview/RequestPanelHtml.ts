@@ -383,7 +383,12 @@ export function generateRequestPanelHtml(
             <!-- Response Body Tab -->
             <vscode-tab-panel>
                 <div class="response-tab-content">
-                    <div class="response-body" id="responseBody"></div>
+                    <div class="response-body-wrapper">
+                        <div class="response-body" id="responseBody"></div>
+                        <button class="copy-response-btn" id="copyResponseBtn" title="Copy response">
+                            <span class="codicon codicon-copy"></span>
+                        </button>
+                    </div>
                 </div>
             </vscode-tab-panel>
 
@@ -423,7 +428,12 @@ export function generateRequestPanelHtml(
             <!-- Raw Tab -->
             <vscode-tab-panel>
                 <div class="response-tab-content">
-                    <div class="response-body" id="responseRaw"></div>
+                    <div class="response-body-wrapper">
+                        <div class="response-body" id="responseRaw"></div>
+                        <button class="copy-response-btn" id="copyRawBtn" title="Copy raw response">
+                            <span class="codicon codicon-copy"></span>
+                        </button>
+                    </div>
                 </div>
             </vscode-tab-panel>
 
@@ -478,6 +488,9 @@ export function generateRequestPanelHtml(
             // Variable tooltip state
             let resolvedVariablesCache = {};
             let pendingVariableResolve = null;
+            
+            // Response body for copy functionality
+            let currentResponseBody = '';
             
             // Request available variables on load
             vscode.postMessage({ type: 'getAvailableVariables' });
@@ -1122,6 +1135,37 @@ export function generateRequestPanelHtml(
                 vscode.postMessage({ type: 'openInEditor' });
             });
 
+            // Copy response button handlers
+            function setupCopyButton(btnId) {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                
+                btn.addEventListener('click', () => {
+                    if (!currentResponseBody) return;
+                    
+                    vscode.postMessage({ type: 'copyToClipboard', text: currentResponseBody });
+                    
+                    // Visual feedback
+                    btn.classList.add('copied');
+                    const icon = btn.querySelector('.codicon');
+                    if (icon) {
+                        icon.classList.remove('codicon-copy');
+                        icon.classList.add('codicon-check');
+                    }
+                    
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        if (icon) {
+                            icon.classList.remove('codicon-check');
+                            icon.classList.add('codicon-copy');
+                        }
+                    }, 1500);
+                });
+            }
+            
+            setupCopyButton('copyResponseBtn');
+            setupCopyButton('copyRawBtn');
+
             // Calculate and set fixed height for response tab content
             function updateResponseTabHeight() {
                 const responsePane = document.querySelector('.response-pane');
@@ -1758,6 +1802,9 @@ export function generateRequestPanelHtml(
                 if (responsePane) responsePane.classList.add('visible');
                 if (divider) divider.classList.add('visible');
                 
+                // Store raw response body for copy functionality
+                currentResponseBody = response.body || '';
+                
                 // Status metrics
                 const statusEl = document.getElementById('responseStatus');
                 statusEl.textContent = response.status + ' ' + (response.statusText || '');
@@ -1863,6 +1910,9 @@ export function generateRequestPanelHtml(
                 const divider = document.getElementById('splitDivider');
                 if (responsePane) responsePane.classList.add('visible');
                 if (divider) divider.classList.add('visible');
+                
+                // Store error as response body for copy functionality
+                currentResponseBody = error || '';
                 
                 const statusEl = document.getElementById('responseStatus');
                 statusEl.textContent = 'Error';

@@ -316,6 +316,50 @@ vscode-single-select {
     min-height: 100px;
 }
 
+.response-body-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.copy-response-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 4px;
+    padding: 4px 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.response-body-wrapper:hover .copy-response-btn {
+    opacity: 1;
+}
+
+.copy-response-btn:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.copy-response-btn:active {
+    transform: scale(0.95);
+}
+
+.copy-response-btn.copied {
+    opacity: 1;
+    background-color: var(--vscode-testing-iconPassed, #4caf50);
+    color: white;
+}
+
 /* Syntax highlighting */
 .hl-key {
     color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
