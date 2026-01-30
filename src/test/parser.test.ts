@@ -114,6 +114,30 @@ GET {{baseUrl}}/users`;
             assert.ok(result.includes('{{$randomInt}}'), 'Should keep $randomInt unchanged');
         });
 
+        test('should NOT transform {{$randomInt 1 100}} variable with parameters', () => {
+            const request = createRequest({
+                url: 'https://api.example.com?r={{$randomInt 1 100}}'
+            });
+            const result = serializeToHttpFile([request]);
+            assert.ok(result.includes('{{$randomInt 1 100}}'), 'Should keep $randomInt with params unchanged');
+        });
+
+        test('should NOT transform {{$timestamp -1 d}} variable with offset', () => {
+            const request = createRequest({
+                url: 'https://api.example.com?ts={{$timestamp -1 d}}'
+            });
+            const result = serializeToHttpFile([request]);
+            assert.ok(result.includes('{{$timestamp -1 d}}'), 'Should keep $timestamp with offset unchanged');
+        });
+
+        test('should NOT transform {{$localDatetime rfc1123}} variable', () => {
+            const request = createRequest({
+                headers: [{ name: 'Date', value: '{{$localDatetime rfc1123}}', enabled: true }]
+            });
+            const result = serializeToHttpFile([request]);
+            assert.ok(result.includes('{{$localDatetime rfc1123}}'), 'Should keep $localDatetime with format unchanged');
+        });
+
         test('should NOT transform {{$dotenv VAR}} if already present', () => {
             const request = createRequest({
                 url: 'https://api.example.com/{{$dotenv ALREADY_DOTENV}}'
