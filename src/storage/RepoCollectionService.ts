@@ -92,6 +92,32 @@ export class RepoCollectionService {
         return filename;
     }
 
+    /**
+     * Check if a value is a variable placeholder (e.g., {{MY_VAR}})
+     * Variable placeholders should not be redacted since they don't contain actual secrets
+     */
+    private isVariablePlaceholder(value: string | undefined): boolean {
+        if (!value) {
+            return false;
+        }
+        // Match {{variableName}} or {{request.response.body.path}} patterns
+        return /^\{\{[^}]+\}\}$/.test(value.trim());
+    }
+
+    /**
+     * Redact a sensitive value, preserving variable placeholders
+     */
+    private redactValue(value: string | undefined): string | undefined {
+        if (!value) {
+            return undefined;
+        }
+        // Preserve variable placeholders - they don't contain actual secrets
+        if (this.isVariablePlaceholder(value)) {
+            return value;
+        }
+        return REDACTED_MARKER;
+    }
+
     sanitizeAuthConfig(auth: AuthConfig | undefined): AuthConfig | undefined {
         if (!auth || auth.type === 'none') {
             return auth;
@@ -102,15 +128,15 @@ export class RepoCollectionService {
         switch (auth.type) {
             case 'basic':
                 sanitized.username = auth.username;
-                sanitized.password = auth.password ? REDACTED_MARKER : undefined;
+                sanitized.password = this.redactValue(auth.password);
                 break;
             case 'bearer':
-                sanitized.token = auth.token ? REDACTED_MARKER : undefined;
+                sanitized.token = this.redactValue(auth.token);
                 break;
             case 'apikey':
                 sanitized.apiKeyName = auth.apiKeyName;
                 sanitized.apiKeyIn = auth.apiKeyIn;
-                sanitized.apiKeyValue = auth.apiKeyValue ? REDACTED_MARKER : undefined;
+                sanitized.apiKeyValue = this.redactValue(auth.apiKeyValue);
                 break;
         }
 
