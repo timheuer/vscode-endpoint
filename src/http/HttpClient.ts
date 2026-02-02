@@ -175,10 +175,30 @@ export class HttpClient {
                             redirectRequest.body = { type: 'none', content: '' };
                         }
 
+                        // Strip sensitive headers on cross-origin redirects
+                        let redirectHeaders = additionalHeaders;
+                        const isCrossOrigin = url.origin !== redirectUrl.origin;
+                        if (isCrossOrigin && additionalHeaders) {
+                            const sensitiveHeaders = ['authorization', 'proxy-authorization', 'cookie'];
+                            redirectHeaders = Object.fromEntries(
+                                Object.entries(additionalHeaders).filter(
+                                    ([key]) => !sensitiveHeaders.includes(key.toLowerCase())
+                                )
+                            );
+                            // Also strip from request headers
+                            redirectRequest.headers = redirectRequest.headers.filter(
+                                h => !sensitiveHeaders.includes(h.name.toLowerCase())
+                            );
+                            logger.debug('Stripped sensitive headers for cross-origin redirect', {
+                                originalOrigin: url.origin,
+                                redirectOrigin: redirectUrl.origin
+                            });
+                        }
+
                         try {
                             const redirectResponse = await this.executeWithRedirects(
                                 redirectRequest,
-                                additionalHeaders,
+                                redirectHeaders,
                                 redirectCount + 1
                             );
                             resolve(redirectResponse);

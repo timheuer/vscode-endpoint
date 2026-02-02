@@ -14,7 +14,7 @@ export interface ResolverOptions {
 }
 
 const VARIABLE_PATTERN = /\{\{([^{}]+)\}\}/g;
-const RESPONSE_VAR_PATTERN = /^(\w+)\.response\.(body|headers|status|statusText)/;
+const RESPONSE_VAR_PATTERN = /^([\w-]+)\.response\.(body|headers|status|statusText)/;
 
 /**
  * Resolve all {{varName}} placeholders in a string
@@ -157,11 +157,11 @@ function resolveRandomInt(params: string[]): string {
  */
 function resolveTimestampVariable(params: string[]): string {
     const now = new Date();
-    
+
     if (params.length >= 2) {
         const offset = parseInt(params[0], 10);
         const unit = params[1];
-        
+
         if (!isNaN(offset)) {
             // Calculate offset in milliseconds
             let offsetMs = 0;
@@ -191,12 +191,12 @@ function resolveTimestampVariable(params: string[]): string {
                     offsetMs = offset;
                     break;
             }
-            
+
             const date = new Date(now.getTime() + offsetMs);
             return date.toISOString();
         }
     }
-    
+
     return now.toISOString();
 }
 
@@ -208,7 +208,7 @@ function resolveTimestampVariable(params: string[]): string {
 function resolveLocalDatetimeVariable(params: string[]): string {
     let format = 'iso8601';
     let offsetParams: string[] = [];
-    
+
     // Parse parameters
     if (params.length > 0) {
         // Check if first param is a format (case-insensitive)
@@ -221,22 +221,22 @@ function resolveLocalDatetimeVariable(params: string[]): string {
             offsetParams = params;
         }
     }
-    
+
     // Get timestamp with offset
     const isoString = resolveTimestampVariable(offsetParams);
     const date = new Date(isoString);
-    
+
     if (format === 'rfc1123') {
         return date.toUTCString();
     }
-    
+
     // Default: ISO 8601 in local time
     const offset = -date.getTimezoneOffset();
     const sign = offset >= 0 ? '+' : '-';
     const absOffset = Math.abs(offset);
     const hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
     const minutes = String(absOffset % 60).padStart(2, '0');
-    
+
     const localISO = date.getFullYear() +
         '-' + String(date.getMonth() + 1).padStart(2, '0') +
         '-' + String(date.getDate()).padStart(2, '0') +
@@ -245,7 +245,7 @@ function resolveLocalDatetimeVariable(params: string[]): string {
         ':' + String(date.getSeconds()).padStart(2, '0') +
         '.' + String(date.getMilliseconds()).padStart(3, '0') +
         sign + hours + ':' + minutes;
-    
+
     return localISO;
 }
 
